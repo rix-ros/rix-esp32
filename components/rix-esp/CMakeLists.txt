@@ -1,0 +1,15 @@
+idf_component_register(
+    SRCS 
+        "src/rix/core/node.cpp"
+        "src/rix/core/mediator.cpp"
+        "src/rix/core/publisher.cpp"
+        "src/rix/core/service.cpp"
+        "src/rix/core/service_client.cpp"
+        "src/rix/core/subscriber.cpp"
+        "src/rix/core/timer.cpp"
+        "src/rix/ipc/endpoint.cpp"
+        "src/rix/ipc/lwip_socket.cpp"
+        "src/rix/util/time.cpp"
+    INCLUDE_DIRS 
+        "include"
+)
