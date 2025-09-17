@@ -22,7 +22,7 @@ namespace rix::ipc
             return socket_->connect(endpoint);
         }
 
-        bool is_connected() const { return wait_connected(rix::util::Duration(0)); }
+        bool is_connected() const { return wait_connected(rix::util::Duration(0.001)); }
 
         bool wait_connected(const rix::util::Duration &timeout) const
         {

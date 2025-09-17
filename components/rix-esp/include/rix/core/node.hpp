@@ -5,6 +5,7 @@
 #include <set>
 
 #include "rix/core/common.hpp"
+#include "rix/core/spinner.hpp"
 #include "rix/core/publisher.hpp"
 #include "rix/core/service.hpp"
 #include "rix/core/service_client.hpp"
@@ -19,7 +20,7 @@
 namespace rix {
 namespace core {
 
-class Node : public interfaces::Spinner {
+class Node : public Spinner {
 public:
   /**
    * @brief Construct a new Node.
@@ -142,7 +143,7 @@ private:
   ServerFactory server_factory_;
   ClientFactory client_factory_;
   rix::msg::mediator::NodeInfo info_;
-  std::vector<std::shared_ptr<interfaces::Spinner>> components_;
+  std::vector<std::shared_ptr<Spinner>> components_;
   std::atomic<bool> shutdown_flag_;
 
   /**

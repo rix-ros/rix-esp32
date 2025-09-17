@@ -432,8 +432,6 @@ Mediator::Mediator(const rix::ipc::Endpoint &rixhub_endpoint,
   if (server_->is_exception()) {
     shutdown();
   }
-  rix::util::Log::init("rixhub");
-
   rix::util::Log::info << "rixhub started on " << server_->local_endpoint()
                        << std::endl;
 }

@@ -36,7 +36,7 @@ Service::Service(const rix::msg::mediator::SrvInfo &info,
 
 void Service::spin_once() {
   // Check to see if a subscriber has made a connection
-  if (!server_->wait_acceptable(rix::util::Duration(0.0))) {
+  if (!server_->wait_acceptable(rix::util::Duration(0.001))) {
     return;
   }
 

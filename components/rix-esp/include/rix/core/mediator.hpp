@@ -5,7 +5,7 @@
 #include <set>
 
 #include "rix/core/common.hpp"
-#include "rix/core/interfaces/spinner.hpp"
+#include "rix/core/spinner.hpp"
 #include "rix/ipc/lwip_socket.hpp"
 #include "rix/msg/mediator/NodeInfo.hpp"
 #include "rix/msg/mediator/Operation.hpp"
@@ -23,7 +23,7 @@
 namespace rix {
 namespace core {
 
-class Mediator : public interfaces::Spinner {
+class Mediator : public Spinner {
 public:
   /**
    * @brief Constructor

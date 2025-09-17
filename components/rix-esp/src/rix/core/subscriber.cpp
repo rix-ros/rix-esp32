@@ -48,7 +48,7 @@ void Subscriber::spin_once() {
   std::lock_guard<std::mutex> guard(callback_mutex_);
 
   // Check to see if rixhub has made a connection
-  if (server_->wait_acceptable(rix::util::Duration(0.0))) {
+  if (server_->wait_acceptable(rix::util::Duration(0.001))) {
     // Accept a connection from rixhub
     std::shared_ptr<rix::ipc::Connection> conn = server_->accept();
     if (!conn) {

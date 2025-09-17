@@ -5,7 +5,7 @@
 #include <mutex>
 
 #include "rix/core/common.hpp"
-#include "rix/core/interfaces/spinner.hpp"
+#include "rix/core/spinner.hpp"
 #include "rix/ipc/client.hpp"
 #include "rix/ipc/server.hpp"
 #include "rix/msg/mediator/Operation.hpp"
@@ -21,7 +21,7 @@ namespace core {
 
 class Node; // Forward declaration
 
-class Subscriber : public interfaces::Spinner {
+class Subscriber : public Spinner {
   /**
    * @brief We declare the Node as a friend class so that its factory method
    * create_subscriber has access to the private constructor.
@@ -110,7 +110,7 @@ private:
    * here for this reason.
    *
    */
-  using interfaces::Spinner::spin;
+  using Spinner::spin;
 
   /**
    * @brief This will invoke a single iteration of the subscriber loop.

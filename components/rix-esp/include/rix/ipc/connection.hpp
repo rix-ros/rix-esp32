@@ -18,17 +18,17 @@ namespace rix::ipc
 
         bool is_writable() const
         {
-            return wait_writable(rix::util::Duration(0));
+            return wait_writable(rix::util::Duration(0.001));
         }
 
         bool is_readable() const
         {
-            return wait_readable(rix::util::Duration(0));
+            return wait_readable(rix::util::Duration(0.001));
         }
         
         bool is_exception() const
         {
-            return wait_exception(rix::util::Duration(0));
+            return wait_exception(rix::util::Duration(0.001));
         }
 
         bool wait_readable(const rix::util::Duration &timeout) const

@@ -5,12 +5,12 @@
 #include <mutex>
 
 #include "rix/core/common.hpp"
-#include "rix/core/interfaces/spinner.hpp"
+#include "rix/core/spinner.hpp"
 
 namespace rix {
 namespace core {
 
-class Timer : public interfaces::Spinner {
+class Timer : public Spinner {
 public:
   struct Event {
     rix::util::Time last_expected;

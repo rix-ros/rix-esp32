@@ -5,7 +5,7 @@
 #include <mutex>
 
 #include "rix/core/common.hpp"
-#include "rix/core/interfaces/spinner.hpp"
+#include "rix/core/spinner.hpp"
 #include "rix/ipc/client.hpp"
 #include "rix/ipc/server.hpp"
 #include "rix/msg/mediator/Operation.hpp"
@@ -19,7 +19,7 @@ namespace core {
 
 class Node; // Forward declaration
 
-class Service : public interfaces::Spinner {
+class Service : public Spinner {
   /**
    * @brief We declare the Node as a friend class so that its factory method
    * create_service has access to the private constructor.
@@ -55,7 +55,7 @@ private:
           std::shared_ptr<rix::ipc::Server> server, ClientFactory factory,
           const rix::ipc::Endpoint &rixhub_endpoint);
 
-  using interfaces::Spinner::spin;
+  using Spinner::spin;
   virtual void spin_once() override;
 };
 

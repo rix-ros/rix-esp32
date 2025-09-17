@@ -84,7 +84,7 @@ size_t Publisher::get_subscriber_count() const {
 /**< TODO: Implement the spin_once method */
 void Publisher::spin_once() {
   // Check to see if a subscriber has made a connection
-  if (!server_->wait_acceptable(rix::util::Duration(0.0))) {
+  if (!server_->wait_acceptable(rix::util::Duration(0.001))) {
     return;
   }
 

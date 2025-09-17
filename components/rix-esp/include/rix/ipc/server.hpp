@@ -31,7 +31,7 @@ public:
   ~Server() = default;
 
   bool is_exception() const {
-    return socket_->wait_exception(rix::util::Duration(0.0));
+    return socket_->wait_exception(rix::util::Duration(0.001));
   }
 
   bool wait_exception(const rix::util::Duration &timeout) const {
@@ -39,7 +39,7 @@ public:
   }
 
   bool is_acceptable() const {
-    return socket_->wait_readable(rix::util::Duration(0.0));
+    return socket_->wait_readable(rix::util::Duration(0.001));
   }
 
   bool wait_acceptable(const rix::util::Duration &timeout) const {

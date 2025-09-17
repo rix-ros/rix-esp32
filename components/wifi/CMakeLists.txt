@@ -1,9 +1,12 @@
 idf_component_register(
     SRCS
-        "src/wifi.c"
+        "src/wifi_base.cpp"
+        "src/wifi_access_point.cpp"
+        "src/wifi_station.cpp"
     INCLUDE_DIRS
         "include"
     REQUIRES
         esp_wifi
+        wpa_supplicant
         nvs_flash
 )
