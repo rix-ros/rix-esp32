@@ -29,17 +29,16 @@ extern "C" void app_main() {
   }
   ESP_ERROR_CHECK(ret);
 
-  WifiAccessPoint ap("esp_ap_test", "password", "192.168.4.2", 11, 0, 3);
-  ap.wait_for_new_connection(60000 * 5);
+  // WifiAccessPoint ap("esp_ap_test", "password", "192.168.4.2", 11, 0, 3);
+  // ap.wait_for_new_connection(60000 * 5);
 
-  std::vector<std::string> ips;
+  // std::vector<std::string> ips;
+  // while (ips.empty()) {
+  //   ap.get_connected_stations_ips(ips);
+  //   vTaskDelay(500 / portTICK_PERIOD_MS);
+  // }
 
-  while (ips.empty()) {
-    ap.get_connected_stations_ips(ips);
-    vTaskDelay(500 / portTICK_PERIOD_MS);
-  }
-
-  // WifiStation sta(5);
+  WifiStation sta(5);
 
   // Do a scan
   // std::vector<wifi_ap_record_t> ap_records;
@@ -53,50 +52,50 @@ extern "C" void app_main() {
   // }
   // return;
 
-  // rix::util::Log::info << "Connecting to Wi-Fi..." << std::endl;
-  // sta.connect_enterprise("eduroam", "email@umich.edu", "password");
-  // sta.wait_for_connection(30000);
-  // if (!sta.is_connected()) {
-  //   rix::util::Log::error << "Failed to connect to Wi-Fi." << std::endl;
-  //   return;
-  // }
-
-  // std::string ip = sta.get_ip();
-  // if (ip.empty()) {
-  //   rix::util::Log::error << "Failed to get IP address." << std::endl;
-  //   return;
-  // }
-  // rix::util::Log::info << "Connected! IP: " << ip << std::endl;
-
-  // Init rixhub
-  // auto mediator =
-  //     std::make_shared<rix::core::Mediator>(rix::ipc::Endpoint("0.0.0.0",
-  //     48104));
-
-  // if (!mediator->ok()) {
-  //   rix::util::Log::error << "Failed to create rixhub." << std::endl;
-  //   return;
-  // }
-
-  // Spin
-  // mediator->spin();
-
-  std::shared_ptr<rix::core::Node> node;
-  while (true) {
-    node = std::make_shared<rix::core::Node>("test_node",
-                                             rix::ipc::Endpoint(ips[0], 48104));
-    if (!node->ok()) {
-      rix::util::Log::error << "Failed to create node." << std::endl;
-      vTaskDelay(1000 / portTICK_PERIOD_MS);
-      continue;
-    }
-    break;
+  rix::util::Log::info << "Connecting to Wi-Fi..." << std::endl;
+  sta.connect_enterprise("eduroam", "email@umich.edu", "password");
+  sta.wait_for_connection(30000);
+  if (!sta.is_connected()) {
+    rix::util::Log::error << "Failed to connect to Wi-Fi." << std::endl;
+    return;
   }
 
-  pub = node->create_publisher<rix::msg::standard::Header>("/chatter", rix::ipc::Endpoint("192.168.4.2", 8000));
-  auto timer = node->create_timer(rix::util::Duration(1.0), timer_callback);
+  std::string ip = sta.get_ip();
+  if (ip.empty()) {
+    rix::util::Log::error << "Failed to get IP address." << std::endl;
+    return;
+  }
+  rix::util::Log::info << "Connected! IP: " << ip << std::endl;
 
-  node->spin();
+  // Init rixhub
+  auto mediator =
+      std::make_shared<rix::core::Mediator>(rix::ipc::Endpoint("0.0.0.0",
+      48104));
+
+  if (!mediator->ok()) {
+    rix::util::Log::error << "Failed to create rixhub." << std::endl;
+    return;
+  }
+
+  // Spin
+  mediator->spin();
+
+  // std::shared_ptr<rix::core::Node> node;
+  // while (true) {
+  //   node = std::make_shared<rix::core::Node>("test_node",
+  //                                            rix::ipc::Endpoint(ips[0], 48104));
+  //   if (!node->ok()) {
+  //     rix::util::Log::error << "Failed to create node." << std::endl;
+  //     vTaskDelay(1000 / portTICK_PERIOD_MS);
+  //     continue;
+  //   }
+  //   break;
+  // }
+
+  // pub = node->create_publisher<rix::msg::standard::Header>("/chatter", rix::ipc::Endpoint("192.168.4.2", 8000));
+  // auto timer = node->create_timer(rix::util::Duration(1.0), timer_callback);
+
+  // node->spin();
 
   return;
 }

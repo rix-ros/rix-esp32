@@ -1,6 +1,7 @@
 #pragma once
 
-#include "freertos/FreeRTOS.h"
+#include "rix/ipc/generic_signal.hpp"
+#include <memory>
 
 namespace rix::core {
 
@@ -11,11 +12,19 @@ public:
   Spinner &operator=(const Spinner &other) = default;
   virtual ~Spinner() = default;
 
-  void spin() {
+  void spin(std::unique_ptr<rix::ipc::GenericSignal> signal) {
     while (ok()) {
+      if (signal->is_ready()) {
+        shutdown();
+        break;
+      }
       spin_once();
-      vTaskDelay(1 / portTICK_PERIOD_MS);
     }
+  }
+
+  void spin() {
+    while (ok())
+      spin_once();
   }
 
   /**

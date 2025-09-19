@@ -7,8 +7,7 @@
 #include "rix/core/common.hpp"
 #include "rix/core/spinner.hpp"
 
-namespace rix {
-namespace core {
+namespace rix::core {
 
 class Timer : public Spinner {
 public:
@@ -70,5 +69,4 @@ private:
   std::atomic<bool> shutdown_flag_;
 };
 
-} // namespace core
-} // namespace rix
+} // namespace rix::core

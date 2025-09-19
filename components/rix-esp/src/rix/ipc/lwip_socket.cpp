@@ -20,7 +20,7 @@ bool LWIPSocket::listen(int backlog) const {
   return ::listen(s_, backlog) == 0;
 }
 
-std::unique_ptr<GenericSocket>
+std::shared_ptr<GenericSocket>
 LWIPSocket::accept(Endpoint &remote_endpoint) const {
   struct sockaddr_in addr;
   socklen_t len = sizeof(addr);
@@ -32,7 +32,7 @@ LWIPSocket::accept(Endpoint &remote_endpoint) const {
   inet_ntop(AF_INET, &addr.sin_addr, remote_endpoint.address.data(),
             INET_ADDRSTRLEN);
   remote_endpoint.port = ntohs(addr.sin_port);
-  return std::unique_ptr<LWIPSocket>(new LWIPSocket(sock_fd));
+  return std::shared_ptr<LWIPSocket>(new LWIPSocket(sock_fd));
 }
 
 bool LWIPSocket::connect(const Endpoint &endpoint) const {
@@ -51,30 +51,6 @@ ssize_t LWIPSocket::send(const void *buf, size_t len, int flags) const {
 
 ssize_t LWIPSocket::recv(void *buf, size_t len, int flags) const {
   return ::recv(s_, buf, len, flags);
-}
-
-ssize_t LWIPSocket::send_to(const void *buf, size_t len,
-                            const Endpoint &endpoint, int flags) const {
-  struct sockaddr_in addr;
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(endpoint.port);
-  inet_pton(AF_INET, endpoint.address.c_str(), &addr.sin_addr);
-  return ::sendto(s_, buf, len, flags, (struct sockaddr *)&addr, sizeof(addr));
-}
-
-ssize_t LWIPSocket::recv_from(void *buf, size_t len, Endpoint &endpoint,
-                              int flags) const {
-  struct sockaddr_in addr;
-  socklen_t addrlen = sizeof(addr);
-  ssize_t n;
-  n = ::recvfrom(s_, buf, len, flags, (struct sockaddr *)&addr, &addrlen);
-  if (n < 0) {
-    return n;
-  }
-  endpoint.address.resize(INET_ADDRSTRLEN);
-  inet_ntop(AF_INET, &addr.sin_addr, endpoint.address.data(), INET_ADDRSTRLEN);
-  endpoint.port = ntohs(addr.sin_port);
-  return n;
 }
 
 bool LWIPSocket::wait_readable(const rix::util::Duration &timeout) const {
@@ -145,68 +121,6 @@ bool LWIPSocket::get_reuse_address() const {
     return false;
   }
   return optval != 0;
-}
-
-bool LWIPSocket::set_reuse_port(bool reuse) const {
-  int optval = reuse ? 1 : 0;
-  int status;
-  status = setsockopt(s_, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
-  return status == 0;
-}
-
-bool LWIPSocket::get_reuse_port() const {
-  int optval;
-  socklen_t optlen = sizeof(optval);
-  if (getsockopt(s_, SOL_SOCKET, SO_REUSEPORT, &optval, &optlen) < 0) {
-    return false;
-  }
-  return optval != 0;
-}
-
-bool LWIPSocket::set_recv_buffer_size(int size) const {
-  return setsockopt(s_, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) == 0;
-}
-
-int LWIPSocket::get_recv_buffer_size() const {
-  int size;
-  socklen_t optlen = sizeof(size);
-  if (getsockopt(s_, SOL_SOCKET, SO_RCVBUF, &size, &optlen) < 0) {
-    return -1;
-  }
-  return size;
-}
-
-bool LWIPSocket::set_send_buffer_size(int size) const {
-  return setsockopt(s_, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) == 0;
-}
-
-int LWIPSocket::get_send_buffer_size() const {
-  int size;
-  socklen_t optlen = sizeof(size);
-  if (getsockopt(s_, SOL_SOCKET, SO_SNDBUF, &size, &optlen) < 0) {
-    return -1;
-  }
-  return size;
-}
-
-bool LWIPSocket::join_multicast_group(
-    const std::string &multicast_address) const {
-  ip_mreq mreq;
-  mreq.imr_multiaddr.s_addr = inet_addr(multicast_address.c_str());
-  mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-  int status;
-  status = setsockopt(s_, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
-  return status == 0;
-}
-
-bool LWIPSocket::leave_multicast_group(
-    const std::string &multicast_address) const {
-  ip_mreq mreq;
-  mreq.imr_multiaddr.s_addr = inet_addr(multicast_address.c_str());
-  mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-  int status;
-  status = setsockopt(s_, IPPROTO_IP, IP_DROP_MEMBERSHIP, &mreq, sizeof(mreq));
-  return status == 0;
 }
 
 Endpoint LWIPSocket::local_endpoint() const {

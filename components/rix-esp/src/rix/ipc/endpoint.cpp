@@ -11,6 +11,17 @@ Endpoint::Endpoint(const std::string &address, int port)
 Endpoint::Endpoint(const rix::msg::mediator::Endpoint &msg)
     : address(msg.address), port(msg.port) {}
 
+Endpoint::Endpoint(const std::string &str) : address(""), port(0) {
+  auto pos = str.find(':');
+  if (pos != std::string::npos) {
+    address = str.substr(0, pos);
+    port = std::stoi(str.substr(pos + 1));
+  } else {
+    address = "";
+    port = -1;
+  }
+}
+
 bool Endpoint::operator<(const Endpoint &other) const {
   return address < other.address ||
          (address == other.address && port < other.port);
