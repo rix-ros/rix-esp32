@@ -6,6 +6,8 @@
 
 #include "rix/core/common.hpp"
 #include "rix/core/spinner.hpp"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 namespace rix::core {
 
@@ -46,6 +48,13 @@ public:
    */
   virtual void spin_once() override;
 
+
+  /** @brief Timer task function. Initializes and runs a FreeRTOS task to handle the timer.
+  * Calls spin_once() at the specified duration intervals.
+  * @param pvParameters Pointer to the timer instance.
+  */
+  static void timer_task(void *pvParameters);
+
   /**
    * @brief Set the callback for the timer.
    *
@@ -65,8 +74,9 @@ private:
   rix::util::Duration duration_;
   Event event_;
   Callback callback_;
-  std::mutex callback_mutex_;
   std::atomic<bool> shutdown_flag_;
+  TaskHandle_t task_handle_ = nullptr;
+  SemaphoreHandle_t callback_mutex_ = xSemaphoreCreateMutex();
 };
 
 } // namespace rix::core
