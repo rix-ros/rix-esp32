@@ -149,4 +149,8 @@ Endpoint LWIPSocket::remote_endpoint() const {
   return ep;
 }
 
+int LWIPSocket::get_fd() const {
+  return s_;
+}
+
 } // namespace rix::ipc

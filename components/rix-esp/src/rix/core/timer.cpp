@@ -37,7 +37,7 @@ void Timer::spin_once() {
   //   event_.last_real = event_.current_real;
   //   event_.last_expected = event_.current_expected;
   // }
-  rix::util::lock_guard guard(callback_mutex_);
+  rix::util::LockGuard guard(callback_mutex_);
   event_.current_real = rix::util::Time::now();
   event_.last_duration = event_.current_real - event_.last_real;
   event_.current_expected = event_.current_real;

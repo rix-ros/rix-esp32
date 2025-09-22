@@ -30,6 +30,7 @@ public:
   virtual bool get_reuse_address() const override;
   virtual Endpoint local_endpoint() const override;
   virtual Endpoint remote_endpoint() const override;
+  virtual int get_fd() const override;
 
 private:
   LWIPSocket(int s);

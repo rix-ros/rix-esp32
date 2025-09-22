@@ -4,6 +4,7 @@
 #include <memory>
 #include <mutex>
 
+#include "rix/util/lock_guard.hpp"
 #include "rix/core/common.hpp"
 #include "rix/core/spinner.hpp"
 #include "freertos/FreeRTOS.h"
