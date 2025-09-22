@@ -6,78 +6,13 @@
 #include "rix/util/time.hpp"
 
 #include <memory>
+
 namespace rix::ipc {
 
 const int MAX_CONN = 128;
 
 class GenericSocket {
 public:
-  template<typename Iterator, typename T = typename std::iterator_traits<Iterator>::value_type>
-  static std::vector<T> poll(Iterator first, Iterator last, int flags) {
-    // Assert that T is a GenericSocket pointer (raw or shared, not unique)
-    using PointeeType = typename std::conditional<
-        std::is_pointer<T>::value,
-        typename std::remove_pointer<T>::type,
-        typename T::element_type
-    >::type;
-    static_assert(std::is_base_of<rix::ipc::GenericSocket, PointeeType>::value, 
-                  "T must be a pointer to a subclass of rix::ipc::GenericSocket.");
-    
-    // Poll flags: 0x1 = POLLIN (readable), 0x4 = POLLOUT (writable), 0x8 = POLLERR (error)
-    // Usage: auto ready_sockets = GenericSocket::poll(sockets.begin(), sockets.end(), 0x1);
-    
-    std::vector<T> socketList;
-    fd_set readFds, writeFds, errorFds;
-    FD_ZERO(&readFds);
-    FD_ZERO(&writeFds);
-    FD_ZERO(&errorFds);
-    int maxFd = -1;
-    
-    // Populate fd_set and store socket pointers for later reference
-    socketList.reserve(std::distance(first, last));
-    for (Iterator it = first; it != last; ++it) {
-      auto ptr = *it;
-      int fd = ptr->get_fd();
-      socketList.push_back(ptr);
-      
-      // Set appropriate fd_sets based on flags
-      if (flags & 0x1) FD_SET(fd, &readFds);   // POLLIN-like
-      if (flags & 0x4) FD_SET(fd, &writeFds);  // POLLOUT-like
-      if (flags & 0x8) FD_SET(fd, &errorFds);  // POLLERR-like
-      
-      if (fd > maxFd) {
-        maxFd = fd;
-      }
-    }
-    
-    // Perform select operation (block indefinitely for now)
-    int result = select(maxFd + 1, 
-                       (flags & 0x1) ? &readFds : nullptr,
-                       (flags & 0x4) ? &writeFds : nullptr, 
-                       (flags & 0x8) ? &errorFds : nullptr,
-                       nullptr);
-    
-    // Return vector of GenericSocket pointers that are ready
-    std::vector<T> readySockets;
-    if (result > 0) {
-      for (size_t i = 0; i < socketList.size(); ++i) {
-        auto socket = socketList[i];
-        int fd = socket->get_fd();
-        bool isReady = false;
-        
-        if ((flags & 0x1) && FD_ISSET(fd, &readFds)) isReady = true;
-        if ((flags & 0x4) && FD_ISSET(fd, &writeFds)) isReady = true;
-        if ((flags & 0x8) && FD_ISSET(fd, &errorFds)) isReady = true;
-        
-        if (isReady) {
-          readySockets.push_back(socket);
-        }
-      }
-    }
-    
-    return readySockets;
-  }
-
   // Constructor and Destructor
   GenericSocket() = default;
   virtual ~GenericSocket() = default;
@@ -114,8 +49,7 @@ public:
   virtual Endpoint local_endpoint() const = 0;
   virtual Endpoint remote_endpoint() const = 0;
 
-  // Get file descriptor
-  virtual int get_fd() const = 0;
+  virtual int get_fd() const { return -1; }
 
   bool is_writable() const { return wait_writable(rix::util::Duration(0.0)); }
   bool is_readable() const { return wait_readable(rix::util::Duration(0.0)); }

@@ -1,7 +1,7 @@
 #include "nvs_flash.h"
-#include "rix/msg/standard/Header.hpp"
 #include "rix/core/mediator.hpp"
 #include "rix/core/node.hpp"
+#include "rix/msg/standard/Header.hpp"
 #include "wifi/wifi_access_point.hpp"
 #include "wifi/wifi_station.hpp"
 #include <memory>
@@ -38,7 +38,7 @@ extern "C" void app_main() {
   //   vTaskDelay(500 / portTICK_PERIOD_MS);
   // }
 
-  WifiStation sta(5);
+  // WifiStation sta(5);
 
   // Do a scan
   // std::vector<wifi_ap_record_t> ap_records;
@@ -52,38 +52,39 @@ extern "C" void app_main() {
   // }
   // return;
 
-  rix::util::Log::info << "Connecting to Wi-Fi..." << std::endl;
-  sta.connect_enterprise("eduroam", "email@umich.edu", "password");
-  sta.wait_for_connection(30000);
-  if (!sta.is_connected()) {
-    rix::util::Log::error << "Failed to connect to Wi-Fi." << std::endl;
-    return;
-  }
+  // rix::util::Log::info << "Connecting to Wi-Fi..." << std::endl;
+  // sta.connect_enterprise("eduroam", "email@umich.edu", "password");
+  // sta.wait_for_connection(30000);
+  // if (!sta.is_connected()) {
+  //   rix::util::Log::error << "Failed to connect to Wi-Fi." << std::endl;
+  //   return;
+  // }
 
-  std::string ip = sta.get_ip();
-  if (ip.empty()) {
-    rix::util::Log::error << "Failed to get IP address." << std::endl;
-    return;
-  }
-  rix::util::Log::info << "Connected! IP: " << ip << std::endl;
+  // std::string ip = sta.get_ip();
+  // if (ip.empty()) {
+  //   rix::util::Log::error << "Failed to get IP address." << std::endl;
+  //   return;
+  // }
+  // rix::util::Log::info << "Connected! IP: " << ip << std::endl;
 
-  // Init rixhub
-  auto mediator =
-      std::make_shared<rix::core::Mediator>(rix::ipc::Endpoint("0.0.0.0",
-      48104));
+  // // Init rixhub
+  // auto mediator =
+  //     std::make_shared<rix::core::Mediator>(rix::ipc::Endpoint("0.0.0.0",
+  //     48104));
 
-  if (!mediator->ok()) {
-    rix::util::Log::error << "Failed to create rixhub." << std::endl;
-    return;
-  }
+  // if (!mediator->ok()) {
+  //   rix::util::Log::error << "Failed to create rixhub." << std::endl;
+  //   return;
+  // }
 
   // Spin
-  mediator->spin();
+  // mediator->spin();
 
   // std::shared_ptr<rix::core::Node> node;
   // while (true) {
   //   node = std::make_shared<rix::core::Node>("test_node",
-  //                                            rix::ipc::Endpoint(ips[0], 48104));
+  //                                            rix::ipc::Endpoint(ips[0],
+  //                                            48104));
   //   if (!node->ok()) {
   //     rix::util::Log::error << "Failed to create node." << std::endl;
   //     vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -92,10 +93,22 @@ extern "C" void app_main() {
   //   break;
   // }
 
-  // pub = node->create_publisher<rix::msg::standard::Header>("/chatter", rix::ipc::Endpoint("192.168.4.2", 8000));
-  // auto timer = node->create_timer(rix::util::Duration(1.0), timer_callback);
+  // pub = node->create_publisher<rix::msg::standard::Header>("/chatter",
+  // rix::ipc::Endpoint("192.168.4.2", 8000)); auto timer =
+  // node->create_timer(rix::util::Duration(1.0), timer_callback);
 
   // node->spin();
+
+  std::vector<std::shared_ptr<rix::ipc::GenericSocket>> sockets;
+  sockets.push_back(rix::ipc::create_socket());
+  sockets.push_back(rix::ipc::create_socket());
+  sockets.push_back(rix::ipc::create_socket());
+
+  std::vector<std::shared_ptr<rix::ipc::GenericSocket>> readable_sockets;
+  std::vector<std::shared_ptr<rix::ipc::GenericSocket>> exception_sockets;
+  auto ready_sockets = rix::ipc::select(
+      readable_sockets, exception_sockets, sockets.begin(), sockets.end(),
+      rix::util::Duration(0.0), rix::ipc::SelectFlag::READ);
 
   return;
 }
