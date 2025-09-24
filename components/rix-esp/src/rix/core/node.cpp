@@ -47,7 +47,6 @@ void Node::spin_once() {
       it = components_.erase(it);
       continue;
     }
-    component->spin_once();
     it++;
   }
 }

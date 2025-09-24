@@ -31,6 +31,9 @@ public:
   void shutdown() override;
   void publish(const rix::msg::Message &msg);
   size_t get_subscriber_count() const;
+  // Spin is now public to allow external control of spin with signals
+  using Spinner::spin;
+  void spin_once() override;
 
 private:
   rix::msg::mediator::PubInfo info_;
@@ -44,8 +47,8 @@ private:
 
   Publisher(const rix::msg::mediator::PubInfo &info, SocketFactory factory, rix::ipc::Endpoint rixhub_endpoint);
 
-  using Spinner::spin;
-  void spin_once() override;
+  // using Spinner::spin;
+  // void spin_once() override;
 };
 
 } // namespace rix::core

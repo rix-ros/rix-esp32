@@ -67,7 +67,7 @@ void Publisher::publish(const rix::msg::Message &msg) {
     auto conn = *it;
 
     // If the connection is not writable, erase from the list
-    if (!conn->is_writable()) {
+    if (!conn->wait_writable(rix::util::Duration(0.001))) {
       it = connections_.erase(it);
       continue;
     }
@@ -89,7 +89,8 @@ size_t Publisher::get_subscriber_count() const {
 
 void Publisher::spin_once() {
   // Check to see if a subscriber has made a connection
-  if (!server_->wait_readable(rix::util::Duration(0.0))) {
+  // Use a very short timeout to prevent blocking too long
+  if (!server_->wait_readable(rix::util::Duration(0.001))) {
     return;
   }
 
