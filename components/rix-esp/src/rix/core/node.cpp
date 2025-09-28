@@ -39,16 +39,21 @@ bool Node::ok() const { return !shutdown_flag_; }
 void Node::shutdown() { shutdown_flag_ = true; }
 
 void Node::spin_once() {
-  // Spin all components, remove ones that are not 'ok'
+  // Check all components, remove ones that are no longer 'ok'
   auto it = components_.begin();
   while (it != components_.end()) {
     auto component = *it;
     if (!component->ok()) {
+      rix::util::Log::info << "Removing shutdown component from node" << std::endl;
       it = components_.erase(it);
       continue;
     }
+    // No longer call component->spin_once() - each component runs its own task
     it++;
   }
+  
+  // Brief yield to other tasks
+  vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 std::shared_ptr<Timer> Node::create_timer(const rix::util::Duration &d, Timer::Callback callback) {

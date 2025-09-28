@@ -37,9 +37,16 @@ Subscriber::Subscriber(const rix::msg::mediator::SubInfo &info, SocketFactory so
 
   shutdown_flag_ = false;
   registered_flag_ = true;
+  
+  // Create a task to run the spin loop
+  xTaskCreate(&Subscriber::subscriber_task, "SubscriberTask", 4096, this, 4, &task_handle_);
 }
 
 Subscriber::~Subscriber() {
+  if (task_handle_) {
+    vTaskDelete(task_handle_);
+  }
+  
   if (registered_flag_) {
     auto client = socket_factory_();
     if (client->connect(rixhub_endpoint_)) {
@@ -120,6 +127,15 @@ void Subscriber::spin_once() {
     callback_(*msg_instance_);
     it++;
   }
+}
+
+void Subscriber::subscriber_task(void *pvParameters) {
+  Subscriber *self = static_cast<Subscriber*>(pvParameters);
+  while (self->ok()) {
+    self->spin_once();
+    vTaskDelay(pdMS_TO_TICKS(10)); // 10ms spin rate
+  }
+  vTaskDelete(NULL); // Delete itself when done
 }
 
 } // namespace rix::core

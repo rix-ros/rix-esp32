@@ -2,13 +2,15 @@
 
 namespace rix::core {
 
-Publisher::Publisher(const rix::msg::mediator::PubInfo &info, SocketFactory factory, rix::ipc::Endpoint rixhub_endpoint)
-    : info_(info), socket_factory_(factory), rixhub_endpoint_(rixhub_endpoint), shutdown_flag_(true),
-      registered_flag_(false) {
+Publisher::Publisher(const rix::msg::mediator::PubInfo &info,
+                     SocketFactory factory, rix::ipc::Endpoint rixhub_endpoint)
+    : info_(info), socket_factory_(factory), rixhub_endpoint_(rixhub_endpoint),
+      shutdown_flag_(true), registered_flag_(false) {
 
   server_ = socket_factory_();
   server_->set_reuse_address(true);
-  server_->bind(rix::ipc::Endpoint(info_.endpoint.address, info_.endpoint.port));
+  server_->bind(
+      rix::ipc::Endpoint(info_.endpoint.address, info_.endpoint.port));
   server_->listen(rix::ipc::MAX_CONN);
 
   // Ensure server was intitialized properly
@@ -36,9 +38,17 @@ Publisher::Publisher(const rix::msg::mediator::PubInfo &info, SocketFactory fact
 
   shutdown_flag_ = false;
   registered_flag_ = true;
+
+  // Create a task to run the spin loop
+  xTaskCreate(&Publisher::publisher_task, "PublisherTask", 4096, this, 4,
+              &task_handle_);
 }
 
 Publisher::~Publisher() {
+  if (task_handle_) {
+    vTaskDelete(task_handle_);
+  }
+
   // Deregister publisher with rixhub
   if (registered_flag_) {
     auto client = socket_factory_();
@@ -68,12 +78,14 @@ void Publisher::publish(const rix::msg::Message &msg) {
 
     // If the connection is not writable, erase from the list
     if (!conn->wait_writable(rix::util::Duration(0.001))) {
+      printf("Publisher: removing unwritable connection\n");
       it = connections_.erase(it);
       continue;
     }
 
     // Send the message to the subscriber
     if (!conn->send_message(OPCODE::PUB_MESSAGE, msg)) {
+      printf("Publisher: failed to send message, removing connection\n");
       it = connections_.erase(it);
       continue;
     }
@@ -88,14 +100,13 @@ size_t Publisher::get_subscriber_count() const {
 }
 
 void Publisher::spin_once() {
-  // Check to see if a subscriber has made a connection
-  // Use a very short timeout to prevent blocking too long
   if (!server_->wait_readable(rix::util::Duration(0.001))) {
     return;
   }
 
   // Accept a connection from a subscriber
   auto conn = server_->accept();
+  printf("Publisher: accepted new connection\n");
   if (!conn) {
     return;
   }
@@ -103,6 +114,15 @@ void Publisher::spin_once() {
   // Store the connection
   std::lock_guard<std::mutex> guard(connections_mutex_);
   connections_.insert(conn);
+}
+
+void Publisher::publisher_task(void *pvParameters) {
+  Publisher *self = static_cast<Publisher *>(pvParameters);
+  while (self->ok()) {
+    self->spin_once();
+    vTaskDelay(pdMS_TO_TICKS(100)); // 100ms spin rate
+  }
+  vTaskDelete(NULL); // Delete itself when done
 }
 
 } // namespace rix::core

@@ -4,6 +4,8 @@
 #include <mutex>
 #include <set>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "rix/core/common.hpp"
 #include "rix/core/spinner.hpp"
 #include "rix/msg/mediator/Operation.hpp"
@@ -31,11 +33,9 @@ public:
   void shutdown() override;
   void publish(const rix::msg::Message &msg);
   size_t get_subscriber_count() const;
-  // Spin is now public to allow external control of spin with signals
-  using Spinner::spin;
-  void spin_once() override;
 
-private:
+  
+  private:
   rix::msg::mediator::PubInfo info_;
   SocketFactory socket_factory_;
   std::shared_ptr<rix::ipc::GenericSocket> server_;
@@ -44,11 +44,13 @@ private:
   rix::ipc::Endpoint rixhub_endpoint_;
   std::atomic<bool> shutdown_flag_;
   std::atomic<bool> registered_flag_;
-
+  TaskHandle_t task_handle_;
+  
   Publisher(const rix::msg::mediator::PubInfo &info, SocketFactory factory, rix::ipc::Endpoint rixhub_endpoint);
-
-  // using Spinner::spin;
-  // void spin_once() override;
+  
+  using Spinner::spin;
+  void spin_once() override;  
+  static void publisher_task(void *pvParameters);
 };
 
 } // namespace rix::core
