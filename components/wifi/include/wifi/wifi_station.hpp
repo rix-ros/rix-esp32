@@ -17,10 +17,10 @@ public:
 
   bool connect(const std::string &ssid, const std::string &password);
   bool connect_enterprise(const std::string &ssid, const std::string &username,
-                          const std::string &password);
+                          const std::string &password, const char *ca_cert);
 
   std::string get_ip() const;
-
+  std::string get_mac_address() const;
   bool wait_for_connection(int32_t timeout_ms);
   void disconnect();
 
