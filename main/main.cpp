@@ -9,8 +9,8 @@
 
 
 
-std::shared_ptr<rix::core::Publisher> headerPub = nullptr;
-std::shared_ptr<rix::core::Publisher> vecPub = nullptr;
+std::shared_ptr<rix::Publisher> headerPub = nullptr;
+std::shared_ptr<rix::Publisher> vecPub = nullptr;
 std::vector<uint64_t> large_data;
 
   const char* ca_cert_pem = R"(
@@ -50,7 +50,7 @@ jjxDah2nGN59PRbxYvnKkKj9
 -----END CERTIFICATE-----
   )";
 
-void timer_callback(const rix::core::Timer::Event &event) {
+void timer_callback(const rix::TimerCallback::Event &event) {
   static int i = 0;
   if (headerPub->ok()) {
     printf("Timer callback: Publishing message #%d...\n", i);
@@ -58,12 +58,12 @@ void timer_callback(const rix::core::Timer::Event &event) {
     rix::msg::standard::Header header;
     header.frame_id = "Hello, world!";
     header.seq = i++;
-    header.stamp = rix::util::Time::now().to_msg();
+    header.stamp = rix::Time::now().to_msg();
     headerPub->publish(header);
   }
 }
 
-void timer_callback_uint64(const rix::core::Timer::Event &event) {
+void timer_callback_uint64(const rix::TimerCallback::Event &event) {
   static int i = 0;
   if (vecPub->ok()) {
     printf("Timer callback: Publishing large vector #%d...\n", i++);
@@ -99,60 +99,60 @@ extern "C" void app_main() {
   sta.scan(ap_records, true, 64);
 
   for (const auto &ap : ap_records) {
-    rix::util::Log::info << "SSID: " << ap.ssid
+    rix::Log::info << "SSID: " << ap.ssid
                          << ", RSSI: " << static_cast<int>(ap.rssi)
                          << ", Channel: " << static_cast<int>(ap.primary)
                          << std::endl;
   }
-  rix::util::Log::info << "Connecting to Wi-Fi..." << std::endl;
+  rix::Log::info << "Connecting to Wi-Fi..." << std::endl;
   sta.connect_enterprise("eduroam", "umid@umich.edu", "password", ca_cert_pem);
   //sta.connect("Robolink", "i<3robots!");
   sta.wait_for_connection(50000);
   if (!sta.is_connected()) {
-    rix::util::Log::error << "Failed to connect to Wi-Fi." << std::endl;
+    rix::Log::error << "Failed to connect to Wi-Fi." << std::endl;
     return;
   }
 
   std::string ip = sta.get_ip();
   if (ip.empty()) {
-    rix::util::Log::error << "Failed to get IP address." << std::endl;
+    rix::Log::error << "Failed to get IP address." << std::endl;
     return;
   }
   std::string mac_addr = sta.get_mac_address();
   if (mac_addr.empty()) {
-    rix::util::Log::error << "Failed to get MAC address." << std::endl;
+    rix::Log::error << "Failed to get MAC address." << std::endl;
     return;
   }
-  rix::util::Log::info << "Connected! IP: " << ip << ", MAC: " << mac_addr << std::endl;
-  std::shared_ptr<rix::core::Node> node = std::make_shared<rix::core::Node>(
-      "ESP_Node", rix::ipc::Endpoint("35.3.15.150", 48104));
+  rix::Log::info << "Connected! IP: " << ip << ", MAC: " << mac_addr << std::endl;
+  std::shared_ptr<rix::Node> node = std::make_shared<rix::Node>(
+      "ESP_Node", rix::Endpoint("35.3.15.150", 48104));
   if (!node->ok()) {
-    rix::util::Log::error << "Failed to create node." << std::endl;
+    rix::Log::error << "Failed to create node." << std::endl;
     return;
   }
   headerPub = node->create_publisher<rix::msg::standard::Header>(
-      "/chatter", rix::ipc::Endpoint(ip, 8000));
+      "/chatter", rix::Endpoint(ip, 8000));
 
   // Publisher for large data (testing)
   vecPub = node->create_publisher<rix::msg::standard::UInt64Array>(
-      "/large_data", rix::ipc::Endpoint(ip, 8001));
+      "/large_data", rix::Endpoint(ip, 8001));
   if (!headerPub || !headerPub->ok() || !vecPub || !vecPub->ok()) {
-    rix::util::Log::error << "Failed to create publisher." << std::endl;
+    rix::Log::error << "Failed to create publisher." << std::endl;
     return;
   }
   printf("Publisher created successfully on %s:8000\n", ip.c_str());
 
-  auto timer = node->create_timer(rix::util::Duration(1.0), timer_callback);
+  auto timer = node->create_timer(rix::Duration(1.0), timer_callback);
   if (!timer || !timer->ok()) {
-    rix::util::Log::error << "Failed to create timer." << std::endl;
+    rix::Log::error << "Failed to create timer." << std::endl;
     return;
   }
   printf("Timer created successfully with 1.0s interval\n");
 
   fillUintVector(large_data);
-  auto timer_uint = node->create_timer(rix::util::Duration(0.5), timer_callback_uint64);
+  auto timer_uint = node->create_timer(rix::Duration(0.5), timer_callback_uint64);
   if (!timer_uint || !timer_uint->ok()) {
-    rix::util::Log::error << "Failed to create timer." << std::endl;
+    rix::Log::error << "Failed to create timer." << std::endl;
     return;
   }
   printf("Timer created successfully with 0.5s interval\n");

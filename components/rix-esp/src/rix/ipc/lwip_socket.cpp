@@ -53,7 +53,7 @@ ssize_t LWIPSocket::recv(void *buf, size_t len, int flags) const {
   return ::recv(s_, buf, len, flags);
 }
 
-bool LWIPSocket::wait_readable(const rix::util::Duration &timeout) const {
+bool LWIPSocket::wait_readable(const rix::Duration &timeout) const {
   fd_set readfds;
   FD_ZERO(&readfds);
   FD_SET(s_, &readfds);
@@ -64,7 +64,7 @@ bool LWIPSocket::wait_readable(const rix::util::Duration &timeout) const {
   return ret > 0 && FD_ISSET(s_, &readfds);
 }
 
-bool LWIPSocket::wait_writable(const rix::util::Duration &timeout) const {
+bool LWIPSocket::wait_writable(const rix::Duration &timeout) const {
   fd_set writefds;
   FD_ZERO(&writefds);
   FD_SET(s_, &writefds);
@@ -75,7 +75,7 @@ bool LWIPSocket::wait_writable(const rix::util::Duration &timeout) const {
   return ret > 0 && FD_ISSET(s_, &writefds);
 }
 
-bool LWIPSocket::wait_exception(const rix::util::Duration &timeout) const {
+bool LWIPSocket::wait_exception(const rix::Duration &timeout) const {
   fd_set exceptfds;
   FD_ZERO(&exceptfds);
   FD_SET(s_, &exceptfds);
