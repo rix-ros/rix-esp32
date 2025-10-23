@@ -12,51 +12,51 @@
 
 namespace rix {
 namespace msg {
-namespace mediator {
+namespace sensor {
 
-class ParamInfo : public Message {
+class JointState : public Message {
   public:
-    uint64_t id{};
     std::string name{};
-    std::array<uint64_t, 2> message_hash{};
-    std::vector<uint8_t> data{};
+    double position{};
+    double velocity{};
+    double effort{};
 
-    ParamInfo() = default;
-    ParamInfo(const ParamInfo &other) = default;
-    ~ParamInfo() = default;
+    JointState() = default;
+    JointState(const JointState &other) = default;
+    ~JointState() = default;
 
     size_t size() const override {
         using namespace detail;
         size_t size = 0;
-        size += size_number(id);
         size += size_string(name);
-        size += size_number_array(message_hash);
-        size += size_number_vector(data);
+        size += size_number(position);
+        size += size_number(velocity);
+        size += size_number(effort);
         return size;
     }
 
     std::array<uint64_t, 2> hash() const override {
-        return {0x79dbd2385016d490ULL, 0x7e504515804ba3bfULL};
+        return {0x431aef87adbd38f1ULL, 0x85684cf3334910d0ULL};
     }
 
     void serialize(uint8_t *dst, size_t &offset) const override {
         using namespace detail;
-        serialize_number(dst, offset, id);
         serialize_string(dst, offset, name);
-        serialize_number_array(dst, offset, message_hash);
-        serialize_number_vector(dst, offset, data);
+        serialize_number(dst, offset, position);
+        serialize_number(dst, offset, velocity);
+        serialize_number(dst, offset, effort);
     }
 
     bool deserialize(const uint8_t *src, size_t size, size_t &offset) override {
         using namespace detail;
-        if (!deserialize_number(id, src, size, offset)) { return false; };
         if (!deserialize_string(name, src, size, offset)) { return false; };
-        if (!deserialize_number_array(message_hash, src, size, offset)) { return false; };
-        if (!deserialize_number_vector(data, src, size, offset)) { return false; };
+        if (!deserialize_number(position, src, size, offset)) { return false; };
+        if (!deserialize_number(velocity, src, size, offset)) { return false; };
+        if (!deserialize_number(effort, src, size, offset)) { return false; };
         return true;
     }
 };
 
-} // namespace mediator
+} // namespace sensor
 } // namespace msg
 } // namespace rix

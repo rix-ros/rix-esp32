@@ -2,8 +2,11 @@
 
 #include <functional>
 #include <memory>
+#include <set>
 #include <mutex>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "rix/core/common.hpp"
 #include "rix/core/spinner.hpp"
 #include "rix/msg/mediator/Operation.hpp"
@@ -41,16 +44,19 @@ private:
   SocketFactory socket_factory_;
   Callback callback_;
   mutable std::mutex callback_mutex_;
-  std::map<uint64_t, std::shared_ptr<rix::ipc::GenericSocket>> clients_;
+  std::set<std::shared_ptr<rix::ipc::GenericSocket>> clients_;
   rix::ipc::Endpoint rixhub_endpoint_;
   std::atomic<bool> shutdown_flag_;
   std::atomic<bool> registered_flag_;
   std::shared_ptr<rix::msg::Message> msg_instance_;
+  TaskHandle_t task_handle_;
 
   Subscriber(const rix::msg::mediator::SubInfo &info, SocketFactory factory, const rix::ipc::Endpoint &rixhub_endpoint);
 
   using Spinner::spin;
   virtual void spin_once() override;
+  
+  static void subscriber_task(void *pvParameters);
 };
 
 template <typename TMsg> void Subscriber::set_callback(std::function<void(const TMsg &)> callback) {

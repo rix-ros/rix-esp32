@@ -9,54 +9,47 @@
 
 #include "rix/msg/serialization.hpp"
 #include "rix/msg/message.hpp"
+#include "rix/msg/standard/Header.hpp"
 
 namespace rix {
 namespace msg {
-namespace mediator {
+namespace sensor {
 
-class ParamInfo : public Message {
+class CompressedImage : public Message {
   public:
-    uint64_t id{};
-    std::string name{};
-    std::array<uint64_t, 2> message_hash{};
+    standard::Header header{};
     std::vector<uint8_t> data{};
 
-    ParamInfo() = default;
-    ParamInfo(const ParamInfo &other) = default;
-    ~ParamInfo() = default;
+    CompressedImage() = default;
+    CompressedImage(const CompressedImage &other) = default;
+    ~CompressedImage() = default;
 
     size_t size() const override {
         using namespace detail;
         size_t size = 0;
-        size += size_number(id);
-        size += size_string(name);
-        size += size_number_array(message_hash);
+        size += size_message(header);
         size += size_number_vector(data);
         return size;
     }
 
     std::array<uint64_t, 2> hash() const override {
-        return {0x79dbd2385016d490ULL, 0x7e504515804ba3bfULL};
+        return {0xcd18494cd9a05543ULL, 0xb8b8bc270304ba83ULL};
     }
 
     void serialize(uint8_t *dst, size_t &offset) const override {
         using namespace detail;
-        serialize_number(dst, offset, id);
-        serialize_string(dst, offset, name);
-        serialize_number_array(dst, offset, message_hash);
+        serialize_message(dst, offset, header);
         serialize_number_vector(dst, offset, data);
     }
 
     bool deserialize(const uint8_t *src, size_t size, size_t &offset) override {
         using namespace detail;
-        if (!deserialize_number(id, src, size, offset)) { return false; };
-        if (!deserialize_string(name, src, size, offset)) { return false; };
-        if (!deserialize_number_array(message_hash, src, size, offset)) { return false; };
+        if (!deserialize_message(header, src, size, offset)) { return false; };
         if (!deserialize_number_vector(data, src, size, offset)) { return false; };
         return true;
     }
 };
 
-} // namespace mediator
+} // namespace sensor
 } // namespace msg
 } // namespace rix

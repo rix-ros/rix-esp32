@@ -81,7 +81,8 @@ bool WifiStation::connect(const std::string &ssid,
 
 bool WifiStation::connect_enterprise(const std::string &ssid,
                                      const std::string &username,
-                                     const std::string &password) {
+                                     const std::string &password,
+                                    const char *ca_cert) {
   if (!in_station_mode_ || station_connected_)
     return false;
 
@@ -94,6 +95,7 @@ bool WifiStation::connect_enterprise(const std::string &ssid,
   esp_eap_client_set_identity((uint8_t *)username.c_str(), username.length());
   esp_eap_client_set_username((uint8_t *)username.c_str(), username.length());
   esp_eap_client_set_password((uint8_t *)password.c_str(), password.length());
+  esp_eap_client_set_ca_cert((const unsigned char*)ca_cert, strlen(ca_cert) + 1);
   esp_eap_client_set_eap_methods(ESP_EAP_TYPE_PEAP);
   esp_wifi_sta_enterprise_enable();
 
@@ -118,6 +120,19 @@ std::string WifiStation::get_ip() const {
   return std::string(ip_str);
 }
 
+std::string WifiStation::get_mac_address() const {
+  if (!in_station_mode_)
+    return "";
+
+  uint8_t mac[6];
+  if (esp_wifi_get_mac(WIFI_IF_STA, mac) != ESP_OK)
+    return "";
+
+  char mac_str[18];
+  snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
+           mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  return std::string(mac_str);
+}
 bool WifiStation::wait_for_connection(int32_t timeout_ms) {
   if (!in_station_mode_)
     return false;

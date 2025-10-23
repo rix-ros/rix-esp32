@@ -37,9 +37,16 @@ Subscriber::Subscriber(const rix::msg::mediator::SubInfo &info, SocketFactory so
 
   shutdown_flag_ = false;
   registered_flag_ = true;
+  
+  // Create a task to run the spin loop
+  xTaskCreate(&Subscriber::subscriber_task, "SubscriberTask", 4096, this, 4, &task_handle_);
 }
 
 Subscriber::~Subscriber() {
+  if (task_handle_) {
+    vTaskDelete(task_handle_);
+  }
+  
   if (registered_flag_) {
     auto client = socket_factory_();
     if (client->connect(rixhub_endpoint_)) {
@@ -84,34 +91,35 @@ void Subscriber::spin_once() {
       auto client = socket_factory_();
       client->set_blocking(false);
       client->connect(rix::ipc::Endpoint(pub.endpoint.address, pub.endpoint.port));
-      clients_.insert({pub.id, client});
+      clients_.insert(client);
     }
   }
 
-  auto it = clients_.begin();
-  while (it != clients_.end()) {
-    auto client = it->second;
-    // If client is not ok (hang up), erase it
-    if (client->is_exception()) {
-      it = clients_.erase(it);
-      continue;
-    }
+  std::vector<std::shared_ptr<rix::ipc::GenericSocket>> readable_clients;
+  std::vector<std::shared_ptr<rix::ipc::GenericSocket>> exception_clients;
+  rix::ipc::select(readable_clients, exception_clients, clients_.begin(), clients_.end(), rix::util::Duration(0.0),
+                 rix::ipc::SelectFlag::READ);
 
-    // If the client is not connected or not readable, go to next
-    if (!client->is_writable() || !client->is_readable()) {
-      it++;
-      continue;
-    }
+  // Remove any clients that have exceptions
+  for (const auto &client : exception_clients) {
+    clients_.erase(client);
+  }
+
+  auto it = readable_clients.begin();
+  while (it != readable_clients.end()) {
+    auto client = *it;
 
     // Read a message from the publisher
     rix::msg::mediator::Operation op;
     if (!client->recv_message(op, *msg_instance_)) {
-      it = clients_.erase(it);
+      clients_.erase(*it);
+      it++;
       continue;
     }
 
     if (op.opcode != OPCODE::PUB_MESSAGE) {
-      it = clients_.erase(it);
+      clients_.erase(*it);
+      it++;
       continue;
     }
 
@@ -119,6 +127,15 @@ void Subscriber::spin_once() {
     callback_(*msg_instance_);
     it++;
   }
+}
+
+void Subscriber::subscriber_task(void *pvParameters) {
+  Subscriber *self = static_cast<Subscriber*>(pvParameters);
+  while (self->ok()) {
+    self->spin_once();
+    vTaskDelay(pdMS_TO_TICKS(10)); // 10ms spin rate
+  }
+  vTaskDelete(NULL); // Delete itself when done
 }
 
 } // namespace rix::core

@@ -17,6 +17,7 @@
 #include "rix/msg/mediator/NodeInfo.hpp"
 #include "rix/msg/mediator/ParamInfo.hpp"
 #include "rix/msg/mediator/SystemInfo.hpp"
+#include "rix/msg/standard/UInt64.hpp"
 #include "rix/util/log.hpp"
 
 namespace rix::core {
@@ -28,6 +29,8 @@ public:
 
   Node(const Node &) = delete;
   Node &operator=(const Node &) = delete;
+  Node(Node &&) = delete;
+  Node &operator=(Node &&) = delete;
 
   virtual ~Node();
 
@@ -50,9 +53,9 @@ public:
                                           std::function<void(const TRequest &, TResponse &)> callback,
                                           const rix::ipc::Endpoint &endpoint = rix::ipc::Endpoint("127.0.0.1", 0));
 
-  virtual bool ok() const override;
-  virtual void shutdown() override;
-  virtual void spin_once() override;
+  bool ok() const override;
+  void shutdown() override;
+  void spin_once() override;
 
   template <typename TParam> bool set_parameter(const std::string &name, const TParam &parameter);
   template <typename TParam> bool get_parameter(const std::string &name, TParam &parameter);
@@ -178,6 +181,7 @@ template <typename TParam> bool Node::set_parameter(const std::string &name, con
   }
 
   rix::msg::mediator::ParamInfo info;
+  info.id = info_.id;
   info.name = name;
   info.message_hash = parameter.hash();
   info.data.resize(parameter.size());
@@ -192,8 +196,13 @@ template <typename TParam> bool Node::set_parameter(const std::string &name, con
     return false;
   }
 
+  rix::msg::mediator::Operation op;
   rix::msg::mediator::Status status;
-  if (!client->recv_message(status, status.size())) {
+  if (!client->recv_message(op, status)) {
+    return false;
+  }
+
+  if (op.opcode != OPCODE::STATUS_RESPONSE) {
     return false;
   }
 
@@ -208,6 +217,7 @@ template <typename TParam> bool Node::get_parameter(const std::string &name, TPa
   }
 
   rix::msg::mediator::ParamInfo info;
+  info.id = info_.id;
   info.name = name;
   info.message_hash = parameter.hash();
   rix::msg::mediator::ParamInfo info_received;

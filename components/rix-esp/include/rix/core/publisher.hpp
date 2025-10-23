@@ -4,6 +4,8 @@
 #include <mutex>
 #include <set>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "rix/core/common.hpp"
 #include "rix/core/spinner.hpp"
 #include "rix/msg/mediator/Operation.hpp"
@@ -23,14 +25,17 @@ class Publisher : public Spinner {
 public:
   Publisher(const Publisher &) = delete;
   Publisher &operator=(const Publisher &) = delete;
+  Publisher(Publisher &&) = delete;
+  Publisher &operator=(Publisher &&) = delete;
   ~Publisher();
 
-  virtual bool ok() const override;
-  virtual void shutdown() override;
+  bool ok() const override;
+  void shutdown() override;
   void publish(const rix::msg::Message &msg);
   size_t get_subscriber_count() const;
 
-private:
+  
+  private:
   rix::msg::mediator::PubInfo info_;
   SocketFactory socket_factory_;
   std::shared_ptr<rix::ipc::GenericSocket> server_;
@@ -39,11 +44,13 @@ private:
   rix::ipc::Endpoint rixhub_endpoint_;
   std::atomic<bool> shutdown_flag_;
   std::atomic<bool> registered_flag_;
-
+  TaskHandle_t task_handle_;
+  
   Publisher(const rix::msg::mediator::PubInfo &info, SocketFactory factory, rix::ipc::Endpoint rixhub_endpoint);
-
+  
   using Spinner::spin;
-  virtual void spin_once() override;
+  void spin_once() override;  
+  static void publisher_task(void *pvParameters);
 };
 
 } // namespace rix::core
