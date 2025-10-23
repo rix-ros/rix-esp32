@@ -3,9 +3,10 @@
 namespace rix {
 
 Service::Service(const msg::mediator::SrvInfo& info,
+                  const Duration& period,
                  SocketFactory socket_factory,
                  const Endpoint& rixhub_endpoint)
-    : info_(info), socket_factory_(socket_factory), rixhub_endpoint_(rixhub_endpoint),
+    : Spinner(period), info_(info), socket_factory_(socket_factory), rixhub_endpoint_(rixhub_endpoint),
       registered_flag_(false), request_instance_(nullptr), response_instance_(nullptr) {
 
   server_ = socket_factory_();
@@ -50,7 +51,7 @@ Service::Service(const msg::mediator::SrvInfo& info,
   registered_flag_ = true;
 
   Log::debug << "Service created for \"" << info_.name << "\"." << std::endl;
-
+  xTaskCreate(&Spinner::spin_task,"ServiceTask",4096, this, 4, &task_handle_);
 #ifdef RIX_MULTITHREADED
   spin_thread_ = std::thread([this]() { this->spin(); });
 #endif
@@ -81,7 +82,7 @@ void Service::on_spin() {
   if (!callback_) {
     return;
   }
-  std::lock_guard lock(callback_mutex_);
+  rix::util::LockGuard guard(callback_mutex_);
 
   // Check to see if a subscriber has made a connection
   if (!server_->is_readable())

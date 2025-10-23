@@ -125,17 +125,17 @@ extern "C" void app_main() {
   }
   rix::Log::info << "Connected! IP: " << ip << ", MAC: " << mac_addr << std::endl;
   std::shared_ptr<rix::Node> node = std::make_shared<rix::Node>(
-      "ESP_Node", rix::Endpoint("35.3.15.150", 48104));
+      "ESP_Node", rix::Duration(1.0), rix::Endpoint("35.3.15.150", 48104));
   if (!node->ok()) {
     rix::Log::error << "Failed to create node." << std::endl;
     return;
   }
   headerPub = node->create_publisher<rix::msg::standard::Header>(
-      "/chatter", rix::Endpoint(ip, 8000));
+      "/chatter", rix::Duration(10), rix::Endpoint(ip, 8000));
 
   // Publisher for large data (testing)
   vecPub = node->create_publisher<rix::msg::standard::UInt64Array>(
-      "/large_data", rix::Endpoint(ip, 8001));
+      "/large_data", rix::Duration(10), rix::Endpoint(ip, 8001));
   if (!headerPub || !headerPub->ok() || !vecPub || !vecPub->ok()) {
     rix::Log::error << "Failed to create publisher." << std::endl;
     return;

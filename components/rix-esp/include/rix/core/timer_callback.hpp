@@ -49,14 +49,14 @@ private:
   using Spinner::spin_once;
   void on_spin() override;
 
+  static void timer_task(void* pvParameters);
+
   Duration duration_;
   Event event_;
   Callback callback_;
-  std::mutex callback_mutex_;
-
-#ifdef RIX_MULTITHREADED
-  std::thread spin_thread_{};
-#endif
+  std::atomic<bool> shutdown_flag_{false};
+  TaskHandle_t task_handle_{nullptr};
+  SemaphoreHandle_t callback_mutex_ = xSemaphoreCreateMutex();
 };
 
 } // namespace rix

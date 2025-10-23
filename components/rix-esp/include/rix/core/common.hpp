@@ -14,7 +14,7 @@
 #include "rix/ipc/socket.hpp"
 #include "rix/util/environment.hpp"
 #include "rix/util/log.hpp"
-
+#include "rix/util/lock_guard.hpp"
 #ifdef RIX_MULTITHREADED
 #include <thread>
 #endif

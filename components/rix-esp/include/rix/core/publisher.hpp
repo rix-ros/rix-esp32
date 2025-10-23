@@ -35,15 +35,17 @@ private:
   SocketFactory socket_factory_;
   std::shared_ptr<GenericSocket> server_;
   std::set<std::shared_ptr<GenericSocket>> connections_;
-  mutable std::mutex connections_mutex_;
+  //mutable std::mutex connections_mutex_;
+  SemaphoreHandle_t connections_mutex_ = xSemaphoreCreateMutex();
   Endpoint rixhub_endpoint_;
   std::atomic<bool> registered_flag_;
-
+  std::atomic<bool> shutdown_flag_;
+  TaskHandle_t task_handle_{nullptr};
 #ifdef RIX_MULTITHREADED
   std::thread spin_thread_{};
 #endif
 
-  Publisher(const msg::mediator::PubInfo &info, SocketFactory factory, Endpoint rixhub_endpoint);
+  Publisher(const msg::mediator::PubInfo &info, const Duration& period, SocketFactory factory, Endpoint rixhub_endpoint);
 
   using Spinner::spin;
   using Spinner::spin_once;

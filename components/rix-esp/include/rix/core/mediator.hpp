@@ -25,7 +25,7 @@ namespace rix {
 
 class Mediator : public Spinner {
 public:
-  Mediator(const Endpoint& endpoint = Endpoint(DEFAULT_IP, RIXHUB_PORT), SocketFactory socket_factory = create_socket);
+  Mediator(const Duration& period, const Endpoint& endpoint = Endpoint(DEFAULT_IP, RIXHUB_PORT), SocketFactory socket_factory = create_socket);
   ~Mediator();
 
   Mediator(const Mediator&) = delete;

@@ -1,7 +1,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-namespace rix::util {
+namespace rix {
+namespace util {
 class LockGuard {
 public:
     explicit LockGuard(SemaphoreHandle_t mutex) : mutex_(mutex) {
@@ -24,3 +25,4 @@ private:
     SemaphoreHandle_t mutex_;
 };
 } // namespace rix::util
+} // namespace rix

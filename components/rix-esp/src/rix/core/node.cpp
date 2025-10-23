@@ -2,8 +2,8 @@
 
 namespace rix {
 
-Node::Node(const std::string& name, const Endpoint& endpoint)
-    : rixhub_endpoint_(Endpoint(RIXHUB_IP, RIXHUB_PORT)), registered_flag_(false) {
+Node::Node(const std::string& name, const Duration& period, const Endpoint& endpoint)
+    : Spinner(period), rixhub_endpoint_(Endpoint(RIXHUB_IP, RIXHUB_PORT)), registered_flag_(false) {
   server_ = socket_factory_();
   if (!server_) {
     shutdown();
@@ -99,19 +99,16 @@ void Node::on_spin() {
       it = components_.erase(it);
       continue;
     }
-#ifndef RIX_MULTITHREADED
-    component->spin_once();
-#endif
     it++;
   }
-
+  vTaskDelay(pdMS_TO_TICKS(10));
 #ifdef RIX_MULTITHREADED
   // Sleep to prevent busy waiting
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 #endif
 }
 
-std::shared_ptr<Publisher> Node::create_publisher(const msg::mediator::TopicInfo& topic_info,
+std::shared_ptr<Publisher> Node::create_publisher(const msg::mediator::TopicInfo& topic_info, const Duration& period,
                                                   const Endpoint& rixhub_endpoint,
                                                   const Endpoint& endpoint) {
   msg::mediator::PubInfo pub_info;
@@ -120,12 +117,12 @@ std::shared_ptr<Publisher> Node::create_publisher(const msg::mediator::TopicInfo
   pub_info.topic_info = topic_info;
   pub_info.endpoint.address = endpoint.address;
   pub_info.endpoint.port = endpoint.port;
-  auto pub = std::shared_ptr<Publisher>(new Publisher(pub_info, socket_factory_, rixhub_endpoint_));
+  auto pub = std::shared_ptr<Publisher>(new Publisher(pub_info, period, socket_factory_, rixhub_endpoint_));
   components_.push_back(pub);
   return pub;
 }
 
-std::shared_ptr<Subscriber> Node::create_subscriber(const msg::mediator::TopicInfo& topic_info,
+std::shared_ptr<Subscriber> Node::create_subscriber(const msg::mediator::TopicInfo& topic_info, const Duration& period,
                                                     const Endpoint& rixhub_endpoint,
                                                     const Endpoint& endpoint) {
   msg::mediator::SubInfo sub_info;
@@ -134,18 +131,18 @@ std::shared_ptr<Subscriber> Node::create_subscriber(const msg::mediator::TopicIn
   sub_info.topic_info = topic_info;
   sub_info.endpoint.address = endpoint.address;
   sub_info.endpoint.port = endpoint.port;
-  auto sub = std::shared_ptr<Subscriber>(new Subscriber(sub_info, socket_factory_, rixhub_endpoint_));
+  auto sub = std::shared_ptr<Subscriber>(new Subscriber(sub_info, period, socket_factory_, rixhub_endpoint_));
   components_.push_back(sub);
   return sub;
 }
 
 std::shared_ptr<Service>
-Node::create_service(msg::mediator::SrvInfo& service_info, const Endpoint& rixhub_endpoint, const Endpoint& endpoint) {
+Node::create_service(msg::mediator::SrvInfo& service_info,const Duration& period, const Endpoint& rixhub_endpoint, const Endpoint& endpoint) {
   service_info.id = id_factory_();
   service_info.node_id = info_.id;
   service_info.endpoint.address = endpoint.address;
   service_info.endpoint.port = endpoint.port;
-  auto srv = std::shared_ptr<Service>(new Service(service_info, socket_factory_, rixhub_endpoint_));
+  auto srv = std::shared_ptr<Service>(new Service(service_info, period, socket_factory_, rixhub_endpoint_));
   components_.push_back(srv);
   return srv;
 }
@@ -173,9 +170,10 @@ bool Node::get_system_info(msg::mediator::SystemInfo& info) {
 }
 
 std::shared_ptr<ServiceClient> Node::create_service_client(const msg::mediator::SrvRequest& service_request,
+                                                           const Duration& period,
                                                            const Endpoint& rixhub_endpoint,
                                                            const Endpoint& endpoint) {
-  auto srv_cli = std::shared_ptr<ServiceClient>(new ServiceClient(service_request, socket_factory_, rixhub_endpoint));
+  auto srv_cli = std::shared_ptr<ServiceClient>(new ServiceClient(service_request, period, socket_factory_, rixhub_endpoint));
   components_.push_back(srv_cli);
   return srv_cli;
 }

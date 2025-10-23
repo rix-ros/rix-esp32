@@ -2,11 +2,12 @@
 
 namespace rix {
 
-Subscriber::Subscriber(const msg::mediator::SubInfo& info,
-                       SocketFactory socket_factory,
-                       const Endpoint& rixhub_endpoint)
-    : info_(info), socket_factory_(socket_factory), callback_(nullptr), rixhub_endpoint_(rixhub_endpoint),
-      registered_flag_(false) {
+Subscriber::Subscriber(const msg::mediator::SubInfo &info,
+                       const Duration &period, SocketFactory socket_factory,
+                       const Endpoint &rixhub_endpoint)
+    : Spinner(period), info_(info), socket_factory_(socket_factory),
+      callback_(nullptr), rixhub_endpoint_(rixhub_endpoint),
+      registered_flag_(false), sub_notify_acceptor_(*this, period) {
 
   server_ = socket_factory_();
   server_->set_reuse_address(true);
@@ -48,10 +49,17 @@ Subscriber::Subscriber(const msg::mediator::SubInfo& info,
 
   registered_flag_ = true;
 
-  Log::debug << "Subscriber created on topic \"" << info_.topic_info.name << "\"." << std::endl;
+  Log::debug << "Subscriber created on topic \"" << info_.topic_info.name
+             << "\"." << std::endl;
+
+  xTaskCreate(&Spinner::spin_task, "SubscriberTask", 4096, (void *)this, 4,
+              &task_handle_);
+  xTaskCreate(&Spinner::spin_task, "AcceptorTask", 4096, (void *)this, 4,
+              &task_handle_);
 
 #ifdef RIX_MULTITHREADED
-  sub_notify_acceptor_.spin_thread = std::thread([this]() { this->sub_notify_acceptor_.spin(); });
+  sub_notify_acceptor_.spin_thread =
+      std::thread([this]() { this->sub_notify_acceptor_.spin(); });
   spin_thread_ = std::thread([this]() { this->spin(); });
 #endif
 }
@@ -66,7 +74,8 @@ Subscriber::~Subscriber() {
       client->send_message(OPCODE::SUB_DEREGISTER, info_);
     }
   }
-  Log::debug << "Subscriber on topic \"" << info_.topic_info.name << "\" destroyed." << std::endl;
+  Log::debug << "Subscriber on topic \"" << info_.topic_info.name
+             << "\" destroyed." << std::endl;
 
 #ifdef RIX_MULTITHREADED
   sub_notify_acceptor_.shutdown();
@@ -81,7 +90,7 @@ Subscriber::~Subscriber() {
 }
 
 size_t Subscriber::get_publisher_count() const {
-  std::lock_guard<std::mutex> guard(callback_mutex_);
+  rix::util::LockGuard guard(callback_mutex_);
   return clients_.size();
 }
 
@@ -93,11 +102,12 @@ void Subscriber::on_spin() {
   sub_notify_acceptor_.spin_once();
 #endif
 
-  std::lock_guard<std::mutex> guard(callback_mutex_);
+  rix::util::LockGuard guard(callback_mutex_);
   if (clients_.empty() || !callback_) {
     return;
   }
-  std::vector<std::shared_ptr<GenericSocket>> sockets(clients_.begin(), clients_.end());
+  std::vector<std::shared_ptr<GenericSocket>> sockets(clients_.begin(),
+                                                      clients_.end());
   std::vector<std::shared_ptr<GenericSocket>> readable;
 
   if (GenericSocket::get_poller()) {
@@ -110,17 +120,19 @@ void Subscriber::on_spin() {
     Duration timeout(0.0);
 #endif
 
-    GenericSocket::poll(sockets, timeout, PollFlag::READ, readable, exceptional);
+    GenericSocket::poll(sockets, timeout, PollFlag::READ, readable,
+                        exceptional);
 
     // Remove any clients that have exceptions
-    for (const auto& conn : exceptional) {
+    for (const auto &conn : exceptional) {
       clients_.erase(conn);
-      Log::debug << "Removed exceptional publisher from topic \"" << info_.topic_info.name << "\"." << std::endl;
+      Log::debug << "Removed exceptional publisher from topic \""
+                 << info_.topic_info.name << "\"." << std::endl;
     }
     exceptional.clear();
   } else {
     // Fallback if poller is not available
-    for (const auto& sock : sockets) {
+    for (const auto &sock : sockets) {
       if (sock->is_readable()) {
         readable.push_back(sock);
       }
@@ -136,18 +148,21 @@ void Subscriber::on_spin() {
     if (!client->recv_message(op, *msg_instance_)) {
       clients_.erase(client);
       it++;
-      Log::debug << "Removed exceptional publisher from topic \"" << info_.topic_info.name << "\"." << std::endl;
+      Log::debug << "Removed exceptional publisher from topic \""
+                 << info_.topic_info.name << "\"." << std::endl;
       continue;
     }
 
     if (op.opcode != OPCODE::PUB_MESSAGE) {
       clients_.erase(client);
       it++;
-      Log::debug << "Removed exceptional publisher from topic \"" << info_.topic_info.name << "\"." << std::endl;
+      Log::debug << "Removed exceptional publisher from topic \""
+                 << info_.topic_info.name << "\"." << std::endl;
       continue;
     }
 
-    Log::debugv << "Received message on topic \"" << info_.topic_info.name << "\"." << std::endl;
+    Log::debugv << "Received message on topic \"" << info_.topic_info.name
+                << "\"." << std::endl;
     // Invoke the callback
     callback_(*msg_instance_);
     it++;
@@ -155,11 +170,18 @@ void Subscriber::on_spin() {
   readable.clear();
 }
 
-Subscriber::SubNotifyAcceptor::SubNotifyAcceptor(Subscriber& parent) : parent(parent) {}
+Subscriber::SubNotifyAcceptor::SubNotifyAcceptor(Subscriber &parent, const Duration& period)
+    :  Spinner(period), parent(parent) {}
 
 void Subscriber::SubNotifyAcceptor::on_spin() {
+
+#ifdef RIX_MULTITHREADED
+  Duration timeout(1.0);
+#else
+  Duration timeout(0.0);
+#endif
   // Check to see if rixhub has made a connection
-  if (!parent.server_->wait_readable(Duration(1.0))) {
+  if (!parent.server_->wait_readable(timeout)) {
     return;
   }
 
@@ -178,10 +200,10 @@ void Subscriber::SubNotifyAcceptor::on_spin() {
     Log::warn << "Received invalid opcode from rixhub." << std::endl;
     return;
   }
+  rix::util::LockGuard guard(parent.callback_mutex_);
 
-  std::lock_guard<std::mutex> guard(parent.callback_mutex_);
   // Connect to the specified publishers (non-blocking)
-  for (const auto& pub : sub_notify.publishers) {
+  for (const auto &pub : sub_notify.publishers) {
     auto client = parent.socket_factory_();
     if (!client) {
       continue;
@@ -189,8 +211,9 @@ void Subscriber::SubNotifyAcceptor::on_spin() {
     client->set_blocking(false);
     client->connect(Endpoint(pub.endpoint.address, pub.endpoint.port));
     parent.clients_.insert(client);
-    Log::debug << "Connected to publisher at \"" << pub.endpoint.address << ":" << pub.endpoint.port << "\" on topic \""
-               << pub.topic_info.name << "\"." << std::endl;
+    Log::debug << "Connected to publisher at \"" << pub.endpoint.address << ":"
+               << pub.endpoint.port << "\" on topic \"" << pub.topic_info.name
+               << "\"." << std::endl;
   }
 }
 

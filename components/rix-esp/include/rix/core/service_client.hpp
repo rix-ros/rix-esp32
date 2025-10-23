@@ -34,7 +34,7 @@ private:
   msg::mediator::SrvRequest request_;
   SocketFactory socket_factory_;
   Endpoint endpoint_;
-
+  TaskHandle_t task_handle_{nullptr};
 #ifdef RIX_MULTITHREADED
   std::thread spin_thread_{};
 #endif
@@ -43,7 +43,7 @@ private:
   using Spinner::spin_once;
   void on_spin() override;
 
-  ServiceClient(const msg::mediator::SrvRequest& request, SocketFactory factory, const Endpoint& rixhub_endpoint);
+  ServiceClient(const msg::mediator::SrvRequest& request,const Duration& period, SocketFactory factory, const Endpoint& rixhub_endpoint);
 };
 
 } // namespace rix

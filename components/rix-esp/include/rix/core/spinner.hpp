@@ -6,12 +6,21 @@ namespace rix {
 
 class Spinner {
 public:
-  Spinner() = default;
+  Spinner(const Duration& period) : period_(period) {}
   Spinner(const Spinner& other) = default;
   Spinner& operator=(const Spinner& other) = default;
   Spinner(Spinner&& other) = default;
   Spinner& operator=(Spinner&& other) = default;
   virtual ~Spinner() = default;
+
+  static void spin_task(void* pvParameters) {
+    Spinner* self = static_cast<Spinner*>(pvParameters);
+    while (self->ok()) {
+      self->spin_once();
+      vTaskDelay(self->period_.to_milliseconds() / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL); // Delete itself when done
+  }
 
   void spin() {
     while (ok()) {
@@ -49,6 +58,7 @@ public:
 
 private:
   bool shutdown_flag_{false};
+  Duration period_;
 
   virtual void on_spin() = 0;
 };
