@@ -23,6 +23,15 @@ class JointTrajectory : public Message {
     JointTrajectory(const JointTrajectory &other) = default;
     ~JointTrajectory() = default;
 
+    bool operator==(const JointTrajectory &other) const {
+        if (points != other.points) { return false; }
+        return true;
+    }
+
+    bool operator!=(const JointTrajectory &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

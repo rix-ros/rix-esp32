@@ -22,6 +22,15 @@ class UInt8 : public Message {
     UInt8(const UInt8 &other) = default;
     ~UInt8() = default;
 
+    bool operator==(const UInt8 &other) const {
+        if (data != other.data) { return false; }
+        return true;
+    }
+
+    bool operator!=(const UInt8 &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

@@ -25,6 +25,16 @@ class Transform : public Message {
     Transform(const Transform &other) = default;
     ~Transform() = default;
 
+    bool operator==(const Transform &other) const {
+        if (translation != other.translation) { return false; }
+        if (rotation != other.rotation) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Transform &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

@@ -26,6 +26,18 @@ class SubNotify : public Message {
     SubNotify(const SubNotify &other) = default;
     ~SubNotify() = default;
 
+    bool operator==(const SubNotify &other) const {
+        if (id != other.id) { return false; }
+        if (connect != other.connect) { return false; }
+        if (error != other.error) { return false; }
+        if (publishers != other.publishers) { return false; }
+        return true;
+    }
+
+    bool operator!=(const SubNotify &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

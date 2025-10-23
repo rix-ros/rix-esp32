@@ -22,6 +22,15 @@ class StringArray : public Message {
     StringArray(const StringArray &other) = default;
     ~StringArray() = default;
 
+    bool operator==(const StringArray &other) const {
+        if (data != other.data) { return false; }
+        return true;
+    }
+
+    bool operator!=(const StringArray &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

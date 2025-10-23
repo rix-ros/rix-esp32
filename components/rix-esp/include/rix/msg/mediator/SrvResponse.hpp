@@ -24,6 +24,16 @@ class SrvResponse : public Message {
     SrvResponse(const SrvResponse &other) = default;
     ~SrvResponse() = default;
 
+    bool operator==(const SrvResponse &other) const {
+        if (error != other.error) { return false; }
+        if (srv_info != other.srv_info) { return false; }
+        return true;
+    }
+
+    bool operator!=(const SrvResponse &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

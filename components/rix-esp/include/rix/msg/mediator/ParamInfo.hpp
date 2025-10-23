@@ -25,6 +25,18 @@ class ParamInfo : public Message {
     ParamInfo(const ParamInfo &other) = default;
     ~ParamInfo() = default;
 
+    bool operator==(const ParamInfo &other) const {
+        if (id != other.id) { return false; }
+        if (name != other.name) { return false; }
+        if (message_hash != other.message_hash) { return false; }
+        if (data != other.data) { return false; }
+        return true;
+    }
+
+    bool operator!=(const ParamInfo &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

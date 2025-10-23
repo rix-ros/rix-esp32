@@ -22,6 +22,15 @@ class Float : public Message {
     Float(const Float &other) = default;
     ~Float() = default;
 
+    bool operator==(const Float &other) const {
+        if (data != other.data) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Float &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

@@ -27,6 +27,20 @@ class ActRequest : public Message {
     ActRequest(const ActRequest &other) = default;
     ~ActRequest() = default;
 
+    bool operator==(const ActRequest &other) const {
+        if (node_id != other.node_id) { return false; }
+        if (name != other.name) { return false; }
+        if (protocol != other.protocol) { return false; }
+        if (goal_hash != other.goal_hash) { return false; }
+        if (feedback_hash != other.feedback_hash) { return false; }
+        if (result_hash != other.result_hash) { return false; }
+        return true;
+    }
+
+    bool operator!=(const ActRequest &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

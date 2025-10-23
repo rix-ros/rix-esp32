@@ -26,6 +26,18 @@ class DepthImage : public Message {
     DepthImage(const DepthImage &other) = default;
     ~DepthImage() = default;
 
+    bool operator==(const DepthImage &other) const {
+        if (header != other.header) { return false; }
+        if (width != other.width) { return false; }
+        if (height != other.height) { return false; }
+        if (data != other.data) { return false; }
+        return true;
+    }
+
+    bool operator!=(const DepthImage &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

@@ -24,6 +24,16 @@ class ActResponse : public Message {
     ActResponse(const ActResponse &other) = default;
     ~ActResponse() = default;
 
+    bool operator==(const ActResponse &other) const {
+        if (error != other.error) { return false; }
+        if (act_info != other.act_info) { return false; }
+        return true;
+    }
+
+    bool operator!=(const ActResponse &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

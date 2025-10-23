@@ -14,6 +14,7 @@
 #include "rix/msg/mediator/PubInfo.hpp"
 #include "rix/msg/mediator/SrvInfo.hpp"
 #include "rix/msg/mediator/SubInfo.hpp"
+#include "rix/msg/mediator/TopicInfo.hpp"
 
 namespace rix {
 namespace msg {
@@ -26,10 +27,25 @@ class SystemInfo : public Message {
     std::vector<mediator::SubInfo> subscribers{};
     std::vector<mediator::SrvInfo> services{};
     std::vector<mediator::ActInfo> actions{};
+    std::vector<mediator::TopicInfo> topics{};
 
     SystemInfo() = default;
     SystemInfo(const SystemInfo &other) = default;
     ~SystemInfo() = default;
+
+    bool operator==(const SystemInfo &other) const {
+        if (nodes != other.nodes) { return false; }
+        if (publishers != other.publishers) { return false; }
+        if (subscribers != other.subscribers) { return false; }
+        if (services != other.services) { return false; }
+        if (actions != other.actions) { return false; }
+        if (topics != other.topics) { return false; }
+        return true;
+    }
+
+    bool operator!=(const SystemInfo &other) const {
+        return !(*this == other);
+    }
 
     size_t size() const override {
         using namespace detail;
@@ -39,11 +55,12 @@ class SystemInfo : public Message {
         size += size_message_vector(subscribers);
         size += size_message_vector(services);
         size += size_message_vector(actions);
+        size += size_message_vector(topics);
         return size;
     }
 
     std::array<uint64_t, 2> hash() const override {
-        return {0x3de740ec767570b8ULL, 0xf9b13b114ccd058bULL};
+        return {0x3f4632e08eb50ad6ULL, 0x4b9447c0f29dceb6ULL};
     }
 
     void serialize(uint8_t *dst, size_t &offset) const override {
@@ -53,6 +70,7 @@ class SystemInfo : public Message {
         serialize_message_vector(dst, offset, subscribers);
         serialize_message_vector(dst, offset, services);
         serialize_message_vector(dst, offset, actions);
+        serialize_message_vector(dst, offset, topics);
     }
 
     bool deserialize(const uint8_t *src, size_t size, size_t &offset) override {
@@ -62,6 +80,7 @@ class SystemInfo : public Message {
         if (!deserialize_message_vector(subscribers, src, size, offset)) { return false; };
         if (!deserialize_message_vector(services, src, size, offset)) { return false; };
         if (!deserialize_message_vector(actions, src, size, offset)) { return false; };
+        if (!deserialize_message_vector(topics, src, size, offset)) { return false; };
         return true;
     }
 };

@@ -24,6 +24,16 @@ class Twist : public Message {
     Twist(const Twist &other) = default;
     ~Twist() = default;
 
+    bool operator==(const Twist &other) const {
+        if (linear != other.linear) { return false; }
+        if (angular != other.angular) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Twist &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

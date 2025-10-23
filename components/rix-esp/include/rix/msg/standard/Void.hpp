@@ -22,6 +22,14 @@ class Void : public Message {
     Void(const Void &other) = default;
     ~Void() = default;
 
+    bool operator==(const Void &other) const {
+        return true;
+    }
+
+    bool operator!=(const Void &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

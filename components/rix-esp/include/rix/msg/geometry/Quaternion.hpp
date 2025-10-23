@@ -25,6 +25,18 @@ class Quaternion : public Message {
     Quaternion(const Quaternion &other) = default;
     ~Quaternion() = default;
 
+    bool operator==(const Quaternion &other) const {
+        if (w != other.w) { return false; }
+        if (x != other.x) { return false; }
+        if (y != other.y) { return false; }
+        if (z != other.z) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Quaternion &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

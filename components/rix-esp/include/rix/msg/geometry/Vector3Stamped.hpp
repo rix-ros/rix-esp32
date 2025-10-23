@@ -25,6 +25,16 @@ class Vector3Stamped : public Message {
     Vector3Stamped(const Vector3Stamped &other) = default;
     ~Vector3Stamped() = default;
 
+    bool operator==(const Vector3Stamped &other) const {
+        if (header != other.header) { return false; }
+        if (vector3 != other.vector3) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Vector3Stamped &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

@@ -25,6 +25,16 @@ class Pose2DStamped : public Message {
     Pose2DStamped(const Pose2DStamped &other) = default;
     ~Pose2DStamped() = default;
 
+    bool operator==(const Pose2DStamped &other) const {
+        if (header != other.header) { return false; }
+        if (pose != other.pose) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Pose2DStamped &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

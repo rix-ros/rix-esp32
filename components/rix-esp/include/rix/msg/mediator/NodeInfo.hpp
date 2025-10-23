@@ -27,6 +27,19 @@ class NodeInfo : public Message {
     NodeInfo(const NodeInfo &other) = default;
     ~NodeInfo() = default;
 
+    bool operator==(const NodeInfo &other) const {
+        if (name != other.name) { return false; }
+        if (id != other.id) { return false; }
+        if (machine_id != other.machine_id) { return false; }
+        if (protocol != other.protocol) { return false; }
+        if (endpoint != other.endpoint) { return false; }
+        return true;
+    }
+
+    bool operator!=(const NodeInfo &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

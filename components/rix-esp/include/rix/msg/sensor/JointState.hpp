@@ -25,6 +25,18 @@ class JointState : public Message {
     JointState(const JointState &other) = default;
     ~JointState() = default;
 
+    bool operator==(const JointState &other) const {
+        if (name != other.name) { return false; }
+        if (position != other.position) { return false; }
+        if (velocity != other.velocity) { return false; }
+        if (effort != other.effort) { return false; }
+        return true;
+    }
+
+    bool operator!=(const JointState &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

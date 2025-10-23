@@ -22,6 +22,15 @@ class Int16Array : public Message {
     Int16Array(const Int16Array &other) = default;
     ~Int16Array() = default;
 
+    bool operator==(const Int16Array &other) const {
+        if (data != other.data) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Int16Array &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

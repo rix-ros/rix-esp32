@@ -25,6 +25,17 @@ class Header : public Message {
     Header(const Header &other) = default;
     ~Header() = default;
 
+    bool operator==(const Header &other) const {
+        if (seq != other.seq) { return false; }
+        if (stamp != other.stamp) { return false; }
+        if (frame_id != other.frame_id) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Header &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

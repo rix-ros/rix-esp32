@@ -24,6 +24,17 @@ class Point : public Message {
     Point(const Point &other) = default;
     ~Point() = default;
 
+    bool operator==(const Point &other) const {
+        if (x != other.x) { return false; }
+        if (y != other.y) { return false; }
+        if (z != other.z) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Point &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

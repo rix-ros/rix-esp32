@@ -24,6 +24,17 @@ class Twist2D : public Message {
     Twist2D(const Twist2D &other) = default;
     ~Twist2D() = default;
 
+    bool operator==(const Twist2D &other) const {
+        if (vx != other.vx) { return false; }
+        if (vy != other.vy) { return false; }
+        if (wz != other.wz) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Twist2D &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

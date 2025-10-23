@@ -23,6 +23,16 @@ class TopicInfo : public Message {
     TopicInfo(const TopicInfo &other) = default;
     ~TopicInfo() = default;
 
+    bool operator==(const TopicInfo &other) const {
+        if (name != other.name) { return false; }
+        if (message_hash != other.message_hash) { return false; }
+        return true;
+    }
+
+    bool operator!=(const TopicInfo &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

@@ -22,6 +22,15 @@ class FloatArray : public Message {
     FloatArray(const FloatArray &other) = default;
     ~FloatArray() = default;
 
+    bool operator==(const FloatArray &other) const {
+        if (data != other.data) { return false; }
+        return true;
+    }
+
+    bool operator!=(const FloatArray &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

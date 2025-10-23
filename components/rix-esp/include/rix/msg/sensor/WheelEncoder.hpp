@@ -26,6 +26,18 @@ class WheelEncoder : public Message {
     WheelEncoder(const WheelEncoder &other) = default;
     ~WheelEncoder() = default;
 
+    bool operator==(const WheelEncoder &other) const {
+        if (header != other.header) { return false; }
+        if (ticks != other.ticks) { return false; }
+        if (delta_ticks != other.delta_ticks) { return false; }
+        if (delta_time != other.delta_time) { return false; }
+        return true;
+    }
+
+    bool operator!=(const WheelEncoder &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

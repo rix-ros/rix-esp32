@@ -30,6 +30,22 @@ class ActInfo : public Message {
     ActInfo(const ActInfo &other) = default;
     ~ActInfo() = default;
 
+    bool operator==(const ActInfo &other) const {
+        if (name != other.name) { return false; }
+        if (id != other.id) { return false; }
+        if (node_id != other.node_id) { return false; }
+        if (protocol != other.protocol) { return false; }
+        if (endpoint != other.endpoint) { return false; }
+        if (goal_hash != other.goal_hash) { return false; }
+        if (feedback_hash != other.feedback_hash) { return false; }
+        if (result_hash != other.result_hash) { return false; }
+        return true;
+    }
+
+    bool operator!=(const ActInfo &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

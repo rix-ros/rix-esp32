@@ -25,6 +25,16 @@ class InertiaStamped : public Message {
     InertiaStamped(const InertiaStamped &other) = default;
     ~InertiaStamped() = default;
 
+    bool operator==(const InertiaStamped &other) const {
+        if (header != other.header) { return false; }
+        if (inertia != other.inertia) { return false; }
+        return true;
+    }
+
+    bool operator!=(const InertiaStamped &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

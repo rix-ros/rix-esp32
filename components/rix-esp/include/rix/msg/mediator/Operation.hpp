@@ -23,6 +23,16 @@ class Operation : public Message {
     Operation(const Operation &other) = default;
     ~Operation() = default;
 
+    bool operator==(const Operation &other) const {
+        if (len != other.len) { return false; }
+        if (opcode != other.opcode) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Operation &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

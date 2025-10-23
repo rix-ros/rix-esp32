@@ -26,6 +26,18 @@ class PubNotify : public Message {
     PubNotify(const PubNotify &other) = default;
     ~PubNotify() = default;
 
+    bool operator==(const PubNotify &other) const {
+        if (id != other.id) { return false; }
+        if (connect != other.connect) { return false; }
+        if (error != other.error) { return false; }
+        if (subscribers != other.subscribers) { return false; }
+        return true;
+    }
+
+    bool operator!=(const PubNotify &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

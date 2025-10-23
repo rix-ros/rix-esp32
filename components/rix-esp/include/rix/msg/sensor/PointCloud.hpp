@@ -27,6 +27,17 @@ class PointCloud : public Message {
     PointCloud(const PointCloud &other) = default;
     ~PointCloud() = default;
 
+    bool operator==(const PointCloud &other) const {
+        if (header != other.header) { return false; }
+        if (points != other.points) { return false; }
+        if (channels != other.channels) { return false; }
+        return true;
+    }
+
+    bool operator!=(const PointCloud &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

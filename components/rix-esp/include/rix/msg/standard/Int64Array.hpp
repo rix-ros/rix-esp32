@@ -22,6 +22,15 @@ class Int64Array : public Message {
     Int64Array(const Int64Array &other) = default;
     ~Int64Array() = default;
 
+    bool operator==(const Int64Array &other) const {
+        if (data != other.data) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Int64Array &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

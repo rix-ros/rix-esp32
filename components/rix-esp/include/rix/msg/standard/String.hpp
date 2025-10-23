@@ -22,6 +22,15 @@ class String : public Message {
     String(const String &other) = default;
     ~String() = default;
 
+    bool operator==(const String &other) const {
+        if (data != other.data) { return false; }
+        return true;
+    }
+
+    bool operator!=(const String &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

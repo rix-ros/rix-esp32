@@ -24,6 +24,17 @@ class Pose2D : public Message {
     Pose2D(const Pose2D &other) = default;
     ~Pose2D() = default;
 
+    bool operator==(const Pose2D &other) const {
+        if (x != other.x) { return false; }
+        if (y != other.y) { return false; }
+        if (theta != other.theta) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Pose2D &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

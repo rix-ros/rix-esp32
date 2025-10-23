@@ -23,6 +23,16 @@ class Endpoint : public Message {
     Endpoint(const Endpoint &other) = default;
     ~Endpoint() = default;
 
+    bool operator==(const Endpoint &other) const {
+        if (port != other.port) { return false; }
+        if (address != other.address) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Endpoint &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

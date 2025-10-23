@@ -25,6 +25,18 @@ class Color : public Message {
     Color(const Color &other) = default;
     ~Color() = default;
 
+    bool operator==(const Color &other) const {
+        if (r != other.r) { return false; }
+        if (g != other.g) { return false; }
+        if (b != other.b) { return false; }
+        if (a != other.a) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Color &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

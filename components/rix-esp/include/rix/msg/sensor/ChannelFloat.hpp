@@ -23,6 +23,16 @@ class ChannelFloat : public Message {
     ChannelFloat(const ChannelFloat &other) = default;
     ~ChannelFloat() = default;
 
+    bool operator==(const ChannelFloat &other) const {
+        if (name != other.name) { return false; }
+        if (data != other.data) { return false; }
+        return true;
+    }
+
+    bool operator!=(const ChannelFloat &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

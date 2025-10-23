@@ -25,6 +25,16 @@ class Pose : public Message {
     Pose(const Pose &other) = default;
     ~Pose() = default;
 
+    bool operator==(const Pose &other) const {
+        if (position != other.position) { return false; }
+        if (orientation != other.orientation) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Pose &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

@@ -32,6 +32,24 @@ class LaserScan : public Message {
     LaserScan(const LaserScan &other) = default;
     ~LaserScan() = default;
 
+    bool operator==(const LaserScan &other) const {
+        if (header != other.header) { return false; }
+        if (angle_min != other.angle_min) { return false; }
+        if (angle_max != other.angle_max) { return false; }
+        if (angle_increment != other.angle_increment) { return false; }
+        if (time_increment != other.time_increment) { return false; }
+        if (scan_time != other.scan_time) { return false; }
+        if (range_min != other.range_min) { return false; }
+        if (range_max != other.range_max) { return false; }
+        if (ranges != other.ranges) { return false; }
+        if (intensities != other.intensities) { return false; }
+        return true;
+    }
+
+    bool operator!=(const LaserScan &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

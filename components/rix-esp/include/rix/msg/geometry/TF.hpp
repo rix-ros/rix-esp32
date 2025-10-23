@@ -23,6 +23,15 @@ class TF : public Message {
     TF(const TF &other) = default;
     ~TF() = default;
 
+    bool operator==(const TF &other) const {
+        if (transforms != other.transforms) { return false; }
+        return true;
+    }
+
+    bool operator!=(const TF &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

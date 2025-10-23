@@ -24,6 +24,16 @@ class MotorPWM : public Message {
     MotorPWM(const MotorPWM &other) = default;
     ~MotorPWM() = default;
 
+    bool operator==(const MotorPWM &other) const {
+        if (header != other.header) { return false; }
+        if (pwm != other.pwm) { return false; }
+        return true;
+    }
+
+    bool operator!=(const MotorPWM &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

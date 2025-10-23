@@ -22,6 +22,15 @@ class UInt64Array : public Message {
     UInt64Array(const UInt64Array &other) = default;
     ~UInt64Array() = default;
 
+    bool operator==(const UInt64Array &other) const {
+        if (data != other.data) { return false; }
+        return true;
+    }
+
+    bool operator!=(const UInt64Array &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

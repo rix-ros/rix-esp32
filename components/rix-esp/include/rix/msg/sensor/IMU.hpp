@@ -28,6 +28,18 @@ class IMU : public Message {
     IMU(const IMU &other) = default;
     ~IMU() = default;
 
+    bool operator==(const IMU &other) const {
+        if (header != other.header) { return false; }
+        if (orientation != other.orientation) { return false; }
+        if (angular_velocity != other.angular_velocity) { return false; }
+        if (linear_acceleration != other.linear_acceleration) { return false; }
+        return true;
+    }
+
+    bool operator!=(const IMU &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

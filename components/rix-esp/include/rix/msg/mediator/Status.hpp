@@ -23,6 +23,16 @@ class Status : public Message {
     Status(const Status &other) = default;
     ~Status() = default;
 
+    bool operator==(const Status &other) const {
+        if (id != other.id) { return false; }
+        if (error != other.error) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Status &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

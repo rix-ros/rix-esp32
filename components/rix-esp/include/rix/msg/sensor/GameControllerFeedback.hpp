@@ -26,6 +26,17 @@ class GameControllerFeedback : public Message {
     GameControllerFeedback(const GameControllerFeedback &other) = default;
     ~GameControllerFeedback() = default;
 
+    bool operator==(const GameControllerFeedback &other) const {
+        if (header != other.header) { return false; }
+        if (intensities != other.intensities) { return false; }
+        if (durations != other.durations) { return false; }
+        return true;
+    }
+
+    bool operator!=(const GameControllerFeedback &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

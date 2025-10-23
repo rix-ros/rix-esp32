@@ -24,6 +24,16 @@ class MotorVelocity : public Message {
     MotorVelocity(const MotorVelocity &other) = default;
     ~MotorVelocity() = default;
 
+    bool operator==(const MotorVelocity &other) const {
+        if (header != other.header) { return false; }
+        if (velocity != other.velocity) { return false; }
+        return true;
+    }
+
+    bool operator!=(const MotorVelocity &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

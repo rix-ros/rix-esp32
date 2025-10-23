@@ -25,6 +25,17 @@ class GameController : public Message {
     GameController(const GameController &other) = default;
     ~GameController() = default;
 
+    bool operator==(const GameController &other) const {
+        if (header != other.header) { return false; }
+        if (axes != other.axes) { return false; }
+        if (buttons != other.buttons) { return false; }
+        return true;
+    }
+
+    bool operator!=(const GameController &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

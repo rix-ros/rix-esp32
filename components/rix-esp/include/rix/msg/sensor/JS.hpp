@@ -25,6 +25,16 @@ class JS : public Message {
     JS(const JS &other) = default;
     ~JS() = default;
 
+    bool operator==(const JS &other) const {
+        if (stamp != other.stamp) { return false; }
+        if (joint_states != other.joint_states) { return false; }
+        return true;
+    }
+
+    bool operator!=(const JS &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

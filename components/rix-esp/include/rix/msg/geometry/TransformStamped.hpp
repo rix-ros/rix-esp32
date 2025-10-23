@@ -26,6 +26,17 @@ class TransformStamped : public Message {
     TransformStamped(const TransformStamped &other) = default;
     ~TransformStamped() = default;
 
+    bool operator==(const TransformStamped &other) const {
+        if (header != other.header) { return false; }
+        if (child_frame_id != other.child_frame_id) { return false; }
+        if (transform != other.transform) { return false; }
+        return true;
+    }
+
+    bool operator!=(const TransformStamped &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

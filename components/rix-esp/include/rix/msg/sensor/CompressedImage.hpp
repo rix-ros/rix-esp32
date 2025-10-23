@@ -24,6 +24,16 @@ class CompressedImage : public Message {
     CompressedImage(const CompressedImage &other) = default;
     ~CompressedImage() = default;
 
+    bool operator==(const CompressedImage &other) const {
+        if (header != other.header) { return false; }
+        if (data != other.data) { return false; }
+        return true;
+    }
+
+    bool operator!=(const CompressedImage &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

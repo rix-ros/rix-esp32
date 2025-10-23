@@ -30,6 +30,22 @@ class Inertia : public Message {
     Inertia(const Inertia &other) = default;
     ~Inertia() = default;
 
+    bool operator==(const Inertia &other) const {
+        if (mass != other.mass) { return false; }
+        if (center_of_mass != other.center_of_mass) { return false; }
+        if (ixx != other.ixx) { return false; }
+        if (ixy != other.ixy) { return false; }
+        if (ixz != other.ixz) { return false; }
+        if (iyy != other.iyy) { return false; }
+        if (iyz != other.iyz) { return false; }
+        if (izz != other.izz) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Inertia &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

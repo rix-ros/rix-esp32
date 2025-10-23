@@ -24,6 +24,17 @@ class Vector3 : public Message {
     Vector3(const Vector3 &other) = default;
     ~Vector3() = default;
 
+    bool operator==(const Vector3 &other) const {
+        if (x != other.x) { return false; }
+        if (y != other.y) { return false; }
+        if (z != other.z) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Vector3 &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

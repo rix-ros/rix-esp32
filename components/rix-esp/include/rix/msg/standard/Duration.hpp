@@ -23,6 +23,16 @@ class Duration : public Message {
     Duration(const Duration &other) = default;
     ~Duration() = default;
 
+    bool operator==(const Duration &other) const {
+        if (sec != other.sec) { return false; }
+        if (nsec != other.nsec) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Duration &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

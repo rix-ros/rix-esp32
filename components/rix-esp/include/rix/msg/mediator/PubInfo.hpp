@@ -28,6 +28,19 @@ class PubInfo : public Message {
     PubInfo(const PubInfo &other) = default;
     ~PubInfo() = default;
 
+    bool operator==(const PubInfo &other) const {
+        if (id != other.id) { return false; }
+        if (node_id != other.node_id) { return false; }
+        if (protocol != other.protocol) { return false; }
+        if (topic_info != other.topic_info) { return false; }
+        if (endpoint != other.endpoint) { return false; }
+        return true;
+    }
+
+    bool operator!=(const PubInfo &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

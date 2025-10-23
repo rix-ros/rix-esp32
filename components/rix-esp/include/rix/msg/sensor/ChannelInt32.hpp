@@ -23,6 +23,16 @@ class ChannelInt32 : public Message {
     ChannelInt32(const ChannelInt32 &other) = default;
     ~ChannelInt32() = default;
 
+    bool operator==(const ChannelInt32 &other) const {
+        if (name != other.name) { return false; }
+        if (data != other.data) { return false; }
+        return true;
+    }
+
+    bool operator!=(const ChannelInt32 &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

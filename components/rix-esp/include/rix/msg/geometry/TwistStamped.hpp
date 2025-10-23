@@ -25,6 +25,16 @@ class TwistStamped : public Message {
     TwistStamped(const TwistStamped &other) = default;
     ~TwistStamped() = default;
 
+    bool operator==(const TwistStamped &other) const {
+        if (header != other.header) { return false; }
+        if (twist != other.twist) { return false; }
+        return true;
+    }
+
+    bool operator!=(const TwistStamped &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;

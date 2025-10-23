@@ -27,6 +27,19 @@ class Image : public Message {
     Image(const Image &other) = default;
     ~Image() = default;
 
+    bool operator==(const Image &other) const {
+        if (header != other.header) { return false; }
+        if (width != other.width) { return false; }
+        if (height != other.height) { return false; }
+        if (channels != other.channels) { return false; }
+        if (data != other.data) { return false; }
+        return true;
+    }
+
+    bool operator!=(const Image &other) const {
+        return !(*this == other);
+    }
+
     size_t size() const override {
         using namespace detail;
         size_t size = 0;
