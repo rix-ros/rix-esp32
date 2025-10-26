@@ -59,90 +59,98 @@ public:
   bool is_exception() const { return wait_exception(Duration(0.0)); }
 
   // // Write operation and message
-  // virtual bool send_message(uint8_t opcode, const msg::Message &msg) const {
-  //   // Serialize the message
-  //   msg::mediator::Operation op;
-  //   op.len = msg.size();
-  //   op.opcode = opcode;
-  //   std::vector<uint8_t> buffer(op.size() + msg.size());
-  //   size_t offset = 0;
-  //   op.serialize(buffer.data(), offset);
-  //   msg.serialize(buffer.data(), offset);
-
-  //   size_t bytes = 0;
-  //   while (bytes < buffer.size()) {
-  //     ssize_t result = send(buffer.data() + bytes, buffer.size() - bytes, 0);
-  //     perror("GenericSocket: send_message failed");
-
-  //     if (result <= 0) {
-  //       return false;
-  //     }
-  //     bytes += result;
-  //   }
-  //   printf("GenericSocket: send_message: total sent %zu of %zu bytes\n", bytes,
-  //          buffer.size());
-  //   return bytes == buffer.size();
-  // }
-
   virtual bool send_message(uint8_t opcode, const msg::Message &msg) const {
-    // ---- Serialize the message ----
+    // Serialize the message
     msg::mediator::Operation op;
     op.len = msg.size();
     op.opcode = opcode;
-
     std::vector<uint8_t> buffer(op.size() + msg.size());
     size_t offset = 0;
     op.serialize(buffer.data(), offset);
     msg.serialize(buffer.data(), offset);
 
-    // ---- Transmission parameters ----
-    constexpr size_t CHUNK_SIZE = 1000;                 // TCP MSS for Wi-Fi
-    constexpr TickType_t SEND_DELAY = pdMS_TO_TICKS(5); // pacing delay (5 ms)
+    size_t bytes = 0;
+    while (bytes < buffer.size()) {
+      ssize_t result = send(buffer.data() + bytes, buffer.size() - bytes, 0);
 
-    size_t total_sent = 0;
-
-    // ---- Send loop with chunking ----
-    while (total_sent < buffer.size()) {
-      size_t remaining = buffer.size() - total_sent;
-      size_t to_send = (remaining > CHUNK_SIZE) ? CHUNK_SIZE : remaining;
-
-      ssize_t result = send(buffer.data() + total_sent, to_send, 0);
-
-      if (result < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          // Wait for buffer availability
-          vTaskDelay(SEND_DELAY);
-          continue;
-        } else {
-          perror("GenericSocket: send_message failed");
-          return false; // abort on any real error
-        }
+      if (result != 0) {
+        perror("GenericSocket Send_Message: ");
       }
-
-      total_sent += static_cast<size_t>(result);
-
-      // Optional pacing to avoid overflowing LwIP send queue
-      vTaskDelay(SEND_DELAY);
+      if (result <= 0) {
+        return false;
+      }
+      bytes += result;
     }
-
-    printf("GenericSocket: send_message: total sent %zu of %zu bytes\n",
-           total_sent, buffer.size());
-
-    return (total_sent == buffer.size());
+    printf("GenericSocket: send_message: total sent %zu of %zu bytes\n", bytes,
+           buffer.size());
+    return bytes == buffer.size();
   }
 
-  // virtual bool send_message(const uint8_t* msg_buf,uint32_t msg_size) const {
-  //   // Serialize the message
-  //   size_t bytes = 0;
-  //   while (bytes < msg_size) {
-  //     ssize_t result = send(msg_buf + bytes, msg_size - bytes, 0);
-  //     if (result <= 0) {
-  //       return false;
+  // virtual bool send_message(uint8_t opcode, const msg::Message &msg) const {
+  //   // ---- Serialize the message ----
+  //   msg::mediator::Operation op;
+  //   op.len = msg.size();
+  //   op.opcode = opcode;
+
+  //   std::vector<uint8_t> buffer(op.size() + msg.size());
+  //   size_t offset = 0;
+  //   op.serialize(buffer.data(), offset);
+  //   msg.serialize(buffer.data(), offset);
+
+  //   // ---- Transmission parameters ----
+  //   constexpr size_t CHUNK_SIZE = 1000;                 // TCP MSS for Wi-Fi
+  //   constexpr TickType_t SEND_DELAY = pdMS_TO_TICKS(5); // pacing delay (5
+  //   ms)
+
+  //   size_t total_sent = 0;
+
+  //   // ---- Send loop with chunking ----
+  //   while (total_sent < buffer.size()) {
+  //     size_t remaining = buffer.size() - total_sent;
+  //     size_t to_send = (remaining > CHUNK_SIZE) ? CHUNK_SIZE : remaining;
+
+  //     ssize_t result = send(buffer.data() + total_sent, to_send, 0);
+
+  //     if (result < 0) {
+  //       if (errno == EAGAIN || errno == EWOULDBLOCK) {
+  //         // Wait for buffer availability
+  //         vTaskDelay(SEND_DELAY);
+  //         continue;
+  //       } else {
+  //         perror("GenericSocket: send_message failed");
+  //         return false; // abort on any real error
+  //       }
   //     }
-  //     bytes += result;
+
+  //     total_sent += static_cast<size_t>(result);
+
+  //     // Optional pacing to avoid overflowing LwIP send queue
+  //     vTaskDelay(SEND_DELAY);
   //   }
-  //   return bytes == msg_size;
+
+  //   printf("GenericSocket: send_message: total sent %zu of %zu bytes\n",
+  //          total_sent, buffer.size());
+
+  //   return (total_sent == buffer.size());
   // }
+
+  virtual bool send_message(const uint8_t *msg_buf, size_t msg_size) const {
+    // Serialize the message
+    size_t bytes = 0;
+    while (bytes < msg_size) {
+      ssize_t result = send(msg_buf + bytes, msg_size - bytes, 0);
+      if (result != 0) {
+        perror("GenericSocket Send_Message: ");
+      }
+      if (result <= 0) {
+        return false;
+      }
+      bytes += result;
+    }
+    printf("GenericSocket: send_message: total sent %zu of %zu bytes\n", bytes,
+           msg_size);
+    return bytes == msg_size;
+  }
   // Read message only
   virtual bool recv_message(msg::Message &msg, size_t len) const {
     // Read the message body only

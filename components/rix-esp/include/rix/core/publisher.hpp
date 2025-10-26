@@ -42,6 +42,9 @@ private:
   std::atomic<bool> shutdown_flag_;
   TaskHandle_t task_handle_{nullptr};
   char task_name_[32];
+  // Message buffer for publishing
+  // Using an unreasonable size for stress-testing purposes
+  uint8_t messageBuffer[65536];
 #ifdef RIX_MULTITHREADED
   std::thread spin_thread_{};
 #endif

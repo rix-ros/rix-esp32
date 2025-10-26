@@ -66,24 +66,23 @@ void timer_callback(const rix::TimerCallback::Event &event) {
     headerPub->publish(header);
   }
 }
-void printTcpBufferStatus() {
-  printf("=== TCP Buffer Status ===\n");
-  printf("TCP segments sent: %d\n", lwip_stats.tcp.xmit);
-  printf("TCP segments recv: %d\n", lwip_stats.tcp.recv);
-  printf("TCP errors: %d\n", lwip_stats.tcp.err);
-  printf("TCP drops: %d\n", lwip_stats.tcp.drop);
-  printf("TCP checksum errors: %d\n", lwip_stats.tcp.chkerr);
-  printf("TCP memory errors: %d\n", lwip_stats.tcp.memerr);
-  printf("========================\n");
-}
-
+// void printTcpBufferStatus() {
+//   printf("=== TCP Buffer Status ===\n");
+//   printf("TCP segments sent: %d\n", lwip_stats.tcp.xmit);
+//   printf("TCP segments recv: %d\n", lwip_stats.tcp.recv);
+//   printf("TCP errors: %d\n", lwip_stats.tcp.err);
+//   printf("TCP drops: %d\n", lwip_stats.tcp.drop);
+//   printf("TCP checksum errors: %d\n", lwip_stats.tcp.chkerr);
+//   printf("TCP memory errors: %d\n", lwip_stats.tcp.memerr);
+//   printf("========================\n");
+// }
 
 void timer_callback_uint64(const rix::TimerCallback::Event &event) {
   // static int i = 0;
   if (vecPub->ok()) {
-    printTcpBufferStatus();
-    // printf("Timer callback: Publishing large vector #%d...\n", i++);
-    // printf("Subscriber count: %zu\n", vecPub->get_subscriber_count());
+    // printTcpBufferStatus();
+    //  printf("Timer callback: Publishing large vector #%d...\n", i++);
+    //  printf("Subscriber count: %zu\n", vecPub->get_subscriber_count());
 
     // Note: UInt64Array does not have a stamp field
     // auto start = rix::Time::now();
@@ -91,8 +90,8 @@ void timer_callback_uint64(const rix::TimerCallback::Event &event) {
     // auto end = rix::Time::now();
     // rix::Duration duration = end - start;
     // printf(
-    //     "Published UInt64Array of size %u in %.3lld ms. Free heap: %lu bytes\n",
-    //     uint_msg.data.size(), duration.to_milliseconds(),
+    //     "Published UInt64Array of size %u in %.3lld ms. Free heap: %lu
+    //     bytes\n", uint_msg.data.size(), duration.to_milliseconds(),
     //     esp_get_free_heap_size());
   }
 }
@@ -133,9 +132,8 @@ extern "C" void app_main() {
                    << std::endl;
   }
   rix::Log::info << "Connecting to Wi-Fi..." << std::endl;
-  sta.connect_enterprise("eduroam", "umid@umich.edu", "password",
-                         ca_cert_pem);
-  // sta.connect("Robolink", "i<3robots!");
+  sta.connect_enterprise("eduroam", "umid@umich.edu", "password", ca_cert_pem);
+  //  sta.connect("Robolink", "i<3robots!");
   sta.wait_for_connection(50000);
   if (!sta.is_connected()) {
     rix::Log::error << "Failed to connect to Wi-Fi." << std::endl;
@@ -192,19 +190,18 @@ extern "C" void app_main() {
   }
   printf("Timer created successfully with 1.0s interval\n");
 
-  // TODO: Pass large_data.data when changed to UInt64Array message
-  fillUint64Msg(uint_msg, 200);
+  fillUint64Msg(uint_msg, 8000); // Approx 62 KB message
   rix::TaskConfig uint_timer_config;
-  uint_timer_config.STACK_SIZE =  16384;
+  uint_timer_config.STACK_SIZE = 16384;
   uint_timer_config.PRIORITY = 5;
-  uint_timer_config.MAX_TIMEOUT = rix::Duration(1.0);
+  uint_timer_config.MAX_TIMEOUT = rix::Duration(0.1); // 10 Hz publish rate
   auto timer_uint =
       node->create_timer(uint_timer_config, timer_callback_uint64);
   if (!timer_uint || !timer_uint->ok()) {
     rix::Log::error << "Failed to create timer." << std::endl;
     return;
   }
-  printf("Timer created successfully with 0.5s interval\n");
+  printf("Timer created successfully with 0.1s interval\n");
 
   while (node->ok()) {
     node->spin_once();                    // Check node health
