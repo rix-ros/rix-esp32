@@ -6,7 +6,7 @@ namespace rix {
 
 class Spinner {
 public:
-  Spinner(const Duration& period) : period_(period) {}
+  Spinner(const TaskConfig& config) : taskConfig_(config) {}
   Spinner(const Spinner& other) = default;
   Spinner& operator=(const Spinner& other) = default;
   Spinner(Spinner&& other) = default;
@@ -17,7 +17,8 @@ public:
     Spinner* self = static_cast<Spinner*>(pvParameters);
     while (self->ok()) {
       self->spin_once();
-      vTaskDelay(self->period_.to_milliseconds() / portTICK_PERIOD_MS);
+      // Leave delay to derived classes select calls or IO tasks
+      // vTaskDelay(self->taskConfig_.PERIOD.to_milliseconds() / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL); // Delete itself when done
   }
@@ -58,8 +59,7 @@ public:
 
 private:
   bool shutdown_flag_{false};
-  Duration period_;
-
+  TaskConfig taskConfig_;
   virtual void on_spin() = 0;
 };
 

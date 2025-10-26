@@ -2,10 +2,10 @@
 
 namespace rix {
 
-ServiceClient::ServiceClient(const msg::mediator::SrvRequest& request, const Duration& period,
+ServiceClient::ServiceClient(const msg::mediator::SrvRequest& request, const TaskConfig& config,
                              SocketFactory socket_factory,
                              const Endpoint& rixhub_endpoint)
-    : Spinner(period), request_(request), socket_factory_(socket_factory) {
+    : Spinner(config), request_(request), socket_factory_(socket_factory) {
   auto client = socket_factory_();
   if (!client) {
     shutdown();
@@ -42,7 +42,7 @@ ServiceClient::ServiceClient(const msg::mediator::SrvRequest& request, const Dur
   endpoint_.address = response.srv_info.endpoint.address;
   endpoint_.port = response.srv_info.endpoint.port;
 
-  xTaskCreate(&Spinner::spin_task, "ServiceClientTask", 4096, (void *)this, 4,
+  xTaskCreate(&Spinner::spin_task, "ServiceClientTask", config.STACK_SIZE, (void *)this, config.PRIORITY,
               &task_handle_);
 #ifdef RIX_MULTITHREADED
   spin_thread_ = std::thread([this]() { this->spin(); });
@@ -50,6 +50,9 @@ ServiceClient::ServiceClient(const msg::mediator::SrvRequest& request, const Dur
 }
 
 ServiceClient::~ServiceClient() {
+  if (task_handle_) {
+    vTaskDelete(task_handle_);
+  } 
 #ifdef RIX_MULTITHREADED
   shutdown();
   if (spin_thread_.joinable()) {

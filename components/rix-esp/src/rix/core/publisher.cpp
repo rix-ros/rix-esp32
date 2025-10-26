@@ -2,9 +2,9 @@
 
 namespace rix {
 
-Publisher::Publisher(const msg::mediator::PubInfo &info, const Duration& period, SocketFactory factory,
+Publisher::Publisher(const msg::mediator::PubInfo &info, const TaskConfig& config, SocketFactory factory,
                      Endpoint rixhub_endpoint)
-    : Spinner(period), info_(info), socket_factory_(factory), rixhub_endpoint_(rixhub_endpoint),
+    : Spinner(config), info_(info), socket_factory_(factory), rixhub_endpoint_(rixhub_endpoint),
       registered_flag_(false) {
 
   server_ = socket_factory_();
@@ -58,7 +58,8 @@ Publisher::Publisher(const msg::mediator::PubInfo &info, const Duration& period,
 
   // xTaskCreate(&Publisher::publisher_task, "PublisherTask", 4096, this, 4,
   //             &task_handle_);
-  xTaskCreate(&Spinner::spin_task, "PublisherTask", 4096, (void *)this, 4,
+  snprintf(task_name_, sizeof(task_name_), "%" PRIu64, info_.id);
+  xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this, config.PRIORITY,
               &task_handle_);
 // #ifdef RIX_MULTITHREADED
 //   spin_thread_ = std::thread([this]() { this->spin(); });
@@ -66,7 +67,7 @@ Publisher::Publisher(const msg::mediator::PubInfo &info, const Duration& period,
 }
 
 Publisher::~Publisher() {
-  // Deregister publisher with rixhub
+  // Deregister publisher with rixhubS
   if (task_handle_) {
     vTaskDelete(task_handle_);
   }
@@ -113,7 +114,7 @@ void Publisher::publish(const msg::Message &msg) {
 
   if (GenericSocket::get_poller()) {
     std::vector<std::shared_ptr<GenericSocket>> exceptional;
-    GenericSocket::poll(sockets, Duration(0.0), PollFlag::WRITE, writable,
+    GenericSocket::poll(sockets, Duration(5), PollFlag::WRITE, writable,
                         exceptional);
 
     // Remove any clients that have exceptions
@@ -135,6 +136,10 @@ void Publisher::publish(const msg::Message &msg) {
     }
   }
 
+  // TODO: Add a buffer member to Publisher to avoid reallocating each time
+  // TODO: Serialize message into the buffer member once before sending to avoid multiple serializations
+  // TODO: Need to manually serialize the opcode and the message into a single byte array (see GenericSocket::send_message line 62-68)
+
   // Send the message to each current connection
   auto it = writable.begin();
   while (it != writable.end()) {
@@ -142,16 +147,17 @@ void Publisher::publish(const msg::Message &msg) {
 
     // Send the message to the subscriber
     if (!conn->send_message(OPCODE::PUB_MESSAGE, msg)) {
+      printf("Failed to send message to subscriber.\n");
       connections_.erase(conn);
       it++;
-      Log::debug << "Removed exceptional subscriber from topic \""
-                 << info_.topic_info.name << "\"." << std::endl;
       continue;
+    }
+    else
+    {
+      printf("Sent message to subscriber.\n");
     }
     it++;
   }
-  Log::debugv << "Published message on topic \"" << info_.topic_info.name
-              << "\"." << std::endl;
 }
 
 size_t Publisher::get_subscriber_count() const {

@@ -22,7 +22,7 @@ public:
   using Callback = std::function<void(const Event& event)>;
   template <typename TObj> using ObjCallback = std::function<void(TObj*, const Event& event)>;
 
-  TimerCallback(const Duration& duration, Callback callback);
+  TimerCallback(const TaskConfig& config, Callback callback);
   TimerCallback(const TimerCallback&) = delete;
   TimerCallback& operator=(const TimerCallback&) = delete;
   TimerCallback(TimerCallback&&) = delete;
@@ -49,8 +49,7 @@ private:
   using Spinner::spin_once;
   void on_spin() override;
 
-  static void timer_task(void* pvParameters);
-
+  char task_name_[32];
   Duration duration_;
   Event event_;
   Callback callback_;

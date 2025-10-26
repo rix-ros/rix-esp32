@@ -13,6 +13,11 @@
 #include <cstdint>
 #include <cstring>
 
+// #ifdef CONFIG_IDF_TARGET_ESP32P4
+// #include "esp_wifi_remote.h"
+// #include "esp_hosted_api.h"
+// #endif
+
 class WifiBase {
 public:
   WifiBase();

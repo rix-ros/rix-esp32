@@ -2,7 +2,7 @@
 
 namespace rix {
 
-Mediator::Mediator(const Duration &period, const Endpoint& rixhub_endpoint, SocketFactory socket_factory) : Spinner(period), socket_factory_(socket_factory) {
+Mediator::Mediator(const TaskConfig& config, const Endpoint& rixhub_endpoint, SocketFactory socket_factory) : Spinner(config), socket_factory_(socket_factory) {
   server_ = socket_factory_();
   server_->set_reuse_address(true);
   server_->bind(rixhub_endpoint);

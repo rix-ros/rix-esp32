@@ -41,7 +41,7 @@ private:
   //mutable std::mutex             callback_mutex_;
   SemaphoreHandle_t              callback_mutex_ = xSemaphoreCreateMutex();
   TaskHandle_t                   task_handle_{nullptr};
-
+  char                           task_name_[32];
   Endpoint                       rixhub_endpoint_;
   std::atomic<bool>              registered_flag_;
   std::shared_ptr<msg::Message>  request_instance_;
@@ -52,7 +52,7 @@ private:
 #endif
 
   Service(const msg::mediator::SrvInfo& info,
-          const Duration&                period,
+          const TaskConfig&                config,
           SocketFactory                 socket_factory,
           const Endpoint&               rixhub_endpoint);
 

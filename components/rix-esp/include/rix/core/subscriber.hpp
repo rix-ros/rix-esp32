@@ -50,17 +50,19 @@ private:
   std::shared_ptr<msg::Message> msg_instance_;
   TaskHandle_t task_handle_{nullptr};
 
+  char task_name_[32];
+
 #ifdef RIX_MULTITHREADED
   std::thread spin_thread_;
 #endif
 
-  Subscriber(const msg::mediator::SubInfo &info, const Duration &period,
+  Subscriber(const msg::mediator::SubInfo &info, const TaskConfig &config,
              SocketFactory factory, const Endpoint &rixhub_endpoint);
 
   // Internal class to handle accepting new connections from rixhub
   class SubNotifyAcceptor : public Spinner {
   public:
-    SubNotifyAcceptor(Subscriber &parent, const Duration &period);
+    SubNotifyAcceptor(Subscriber &parent, const TaskConfig &config);
     ~SubNotifyAcceptor() override = default;
 
     SubNotifyAcceptor(const SubNotifyAcceptor &) = delete;
@@ -74,6 +76,9 @@ private:
 #ifdef RIX_MULTITHREADED
     std::thread spin_thread{};
 #endif
+  private: 
+    char task_name_[32];
+    TaskHandle_t task_handle_{nullptr};
   };
 
   SubNotifyAcceptor sub_notify_acceptor_;

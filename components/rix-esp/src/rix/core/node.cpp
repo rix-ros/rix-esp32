@@ -2,8 +2,8 @@
 
 namespace rix {
 
-Node::Node(const std::string& name, const Duration& period, const Endpoint& endpoint)
-    : Spinner(period), rixhub_endpoint_(Endpoint(RIXHUB_IP, RIXHUB_PORT)), registered_flag_(false) {
+Node::Node(const std::string& name, const TaskConfig& config, const Endpoint& endpoint)
+    : Spinner(config), rixhub_endpoint_(Endpoint(RIXHUB_IP, RIXHUB_PORT)), registered_flag_(false) {
   server_ = socket_factory_();
   if (!server_) {
     shutdown();
@@ -30,14 +30,17 @@ Node::Node(const std::string& name, const Duration& period, const Endpoint& endp
 
   auto client = socket_factory_();
   if (!client) {
+    printf("Failed to create client socket\n");
     shutdown();
     return;
   }
   if (!client->connect(rixhub_endpoint_)) {
+    printf("Failed to connect to RIX hub\n");
     shutdown();
     return;
   }
   if (!client->send_message(OPCODE::NODE_REGISTER, info_)) {
+    printf("Failed to send NODE_REGISTER message\n");
     shutdown();
     return;
   }
@@ -45,10 +48,12 @@ Node::Node(const std::string& name, const Duration& period, const Endpoint& endp
   msg::mediator::Operation op;
   msg::mediator::Status status;
   if (!client->recv_message(op, status)) {
+    printf("Failed to receive NODE_REGISTER response\n");
     shutdown();
     return;
   }
   if (status.error) {
+    printf("RIX hub returned error on NODE_REGISTER\n");
     shutdown();
     return;
   }
@@ -56,7 +61,11 @@ Node::Node(const std::string& name, const Duration& period, const Endpoint& endp
   registered_flag_ = true;
 
   // Create timer to handle pings at 2Hz
-  create_timer(Duration(0.5), [this](const TimerCallback::Event&) {
+  TaskConfig ping_timer_config;
+  ping_timer_config.STACK_SIZE = 2048;
+  ping_timer_config.PRIORITY = 5;
+  ping_timer_config.MAX_TIMEOUT = Duration(2);
+  create_timer(ping_timer_config, [this](const TimerCallback::Event&) {
     // Check for ping
     // std::cout << "Checking for ping..." << std::endl;
     if (server_->is_readable()) {
@@ -73,9 +82,16 @@ Node::Node(const std::string& name, const Duration& period, const Endpoint& endp
       }
     }
   });
+
+  xTaskCreate(&Spinner::spin_task, "NodeTask", config.STACK_SIZE, this, config.PRIORITY,
+              &task_handle_);
 }
 
 Node::~Node() {
+
+  if( task_handle_) {
+    vTaskDelete(task_handle_);
+  }
   if (registered_flag_) {
     auto client = socket_factory_();
     if (!client) {
@@ -108,7 +124,7 @@ void Node::on_spin() {
 #endif
 }
 
-std::shared_ptr<Publisher> Node::create_publisher(const msg::mediator::TopicInfo& topic_info, const Duration& period,
+std::shared_ptr<Publisher> Node::create_publisher(const msg::mediator::TopicInfo& topic_info, const TaskConfig& config,
                                                   const Endpoint& rixhub_endpoint,
                                                   const Endpoint& endpoint) {
   msg::mediator::PubInfo pub_info;
@@ -117,12 +133,12 @@ std::shared_ptr<Publisher> Node::create_publisher(const msg::mediator::TopicInfo
   pub_info.topic_info = topic_info;
   pub_info.endpoint.address = endpoint.address;
   pub_info.endpoint.port = endpoint.port;
-  auto pub = std::shared_ptr<Publisher>(new Publisher(pub_info, period, socket_factory_, rixhub_endpoint_));
+  auto pub = std::shared_ptr<Publisher>(new Publisher(pub_info, config, socket_factory_, rixhub_endpoint_));
   components_.push_back(pub);
   return pub;
 }
 
-std::shared_ptr<Subscriber> Node::create_subscriber(const msg::mediator::TopicInfo& topic_info, const Duration& period,
+std::shared_ptr<Subscriber> Node::create_subscriber(const msg::mediator::TopicInfo& topic_info, const TaskConfig& config,
                                                     const Endpoint& rixhub_endpoint,
                                                     const Endpoint& endpoint) {
   msg::mediator::SubInfo sub_info;
@@ -131,18 +147,18 @@ std::shared_ptr<Subscriber> Node::create_subscriber(const msg::mediator::TopicIn
   sub_info.topic_info = topic_info;
   sub_info.endpoint.address = endpoint.address;
   sub_info.endpoint.port = endpoint.port;
-  auto sub = std::shared_ptr<Subscriber>(new Subscriber(sub_info, period, socket_factory_, rixhub_endpoint_));
+  auto sub = std::shared_ptr<Subscriber>(new Subscriber(sub_info, config, socket_factory_, rixhub_endpoint_));
   components_.push_back(sub);
   return sub;
 }
 
 std::shared_ptr<Service>
-Node::create_service(msg::mediator::SrvInfo& service_info,const Duration& period, const Endpoint& rixhub_endpoint, const Endpoint& endpoint) {
+Node::create_service(msg::mediator::SrvInfo& service_info,const TaskConfig& config, const Endpoint& rixhub_endpoint, const Endpoint& endpoint) {
   service_info.id = id_factory_();
   service_info.node_id = info_.id;
   service_info.endpoint.address = endpoint.address;
   service_info.endpoint.port = endpoint.port;
-  auto srv = std::shared_ptr<Service>(new Service(service_info, period, socket_factory_, rixhub_endpoint_));
+  auto srv = std::shared_ptr<Service>(new Service(service_info, config, socket_factory_, rixhub_endpoint_));
   components_.push_back(srv);
   return srv;
 }
@@ -170,10 +186,10 @@ bool Node::get_system_info(msg::mediator::SystemInfo& info) {
 }
 
 std::shared_ptr<ServiceClient> Node::create_service_client(const msg::mediator::SrvRequest& service_request,
-                                                           const Duration& period,
+                                                           const TaskConfig& config,
                                                            const Endpoint& rixhub_endpoint,
                                                            const Endpoint& endpoint) {
-  auto srv_cli = std::shared_ptr<ServiceClient>(new ServiceClient(service_request, period, socket_factory_, rixhub_endpoint));
+  auto srv_cli = std::shared_ptr<ServiceClient>(new ServiceClient(service_request, config, socket_factory_, rixhub_endpoint));
   components_.push_back(srv_cli);
   return srv_cli;
 }

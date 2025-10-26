@@ -41,11 +41,12 @@ private:
   std::atomic<bool> registered_flag_;
   std::atomic<bool> shutdown_flag_;
   TaskHandle_t task_handle_{nullptr};
+  char task_name_[32];
 #ifdef RIX_MULTITHREADED
   std::thread spin_thread_{};
 #endif
 
-  Publisher(const msg::mediator::PubInfo &info, const Duration& period, SocketFactory factory, Endpoint rixhub_endpoint);
+  Publisher(const msg::mediator::PubInfo &info, const TaskConfig& config, SocketFactory factory, Endpoint rixhub_endpoint);
 
   using Spinner::spin;
   using Spinner::spin_once;

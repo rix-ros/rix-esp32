@@ -43,7 +43,7 @@ private:
   using Spinner::spin_once;
   void on_spin() override;
 
-  ServiceClient(const msg::mediator::SrvRequest& request,const Duration& period, SocketFactory factory, const Endpoint& rixhub_endpoint);
+  ServiceClient(const msg::mediator::SrvRequest& request,const TaskConfig& config, SocketFactory factory, const Endpoint& rixhub_endpoint);
 };
 
 } // namespace rix

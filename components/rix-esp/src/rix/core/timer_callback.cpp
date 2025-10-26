@@ -2,12 +2,14 @@
 
 namespace rix {
 
-TimerCallback::TimerCallback(const Duration& duration, Callback callback) : Spinner(duration), duration_(duration), callback_(callback) {
+TimerCallback::TimerCallback(const TaskConfig& config, Callback callback) : Spinner(config), duration_(config.MAX_TIMEOUT), callback_(callback) {
   event_.current_real = Time::now();
   event_.current_expected = event_.last_expected = event_.last_real = Time(0.0);
   event_.last_duration = Duration(0.0);
 
-  xTaskCreate(&Spinner::spin_task, "TimerTask", 4096, this, 2, &task_handle_);
+  Time currentTime = Time::now();
+  snprintf(task_name_, sizeof(task_name_), "%" PRIu64, currentTime.to_nanoseconds());
+  xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this, config.PRIORITY, &task_handle_);
 // #ifdef RIX_MULTITHREADED
 //   spin_thread_ = std::thread([this]() { this->spin(); });
 // #endif
@@ -25,6 +27,10 @@ TimerCallback::~TimerCallback() {
 }
 
 void TimerCallback::on_spin() {
+
+  uint32_t delayMs = duration_.to_milliseconds();
+  uint32_t delayTicks = delayMs / portTICK_PERIOD_MS;
+
   if (!callback_mutex_ || shutdown_flag_) {
     return;
   }
@@ -41,24 +47,15 @@ void TimerCallback::on_spin() {
     event_.last_expected = event_.current_expected;
   }
   
+  if (delayTicks == 0) {
+    delayTicks = 1; // Ensure at least 1 tick delay
+  }  
   // Call callback outside of mutex to avoid deadlock
   if (callback_) {
     callback_(temp_event);
   }
-}
 
-void TimerCallback::timer_task(void *pvParameters) {
-  TimerCallback *self = static_cast<TimerCallback *>(pvParameters);
-  uint32_t delayMs = self->duration_.to_milliseconds();
-  uint32_t delayTicks = delayMs / portTICK_PERIOD_MS;
-  if (delayTicks == 0) {
-    delayTicks = 1; // Ensure at least 1 tick delay
-  }  
-  while (self->ok()) {
-    vTaskDelay(delayTicks);
-    self->on_spin();
-  }
-  vTaskDelete(NULL); // Delete itself when done
+  vTaskDelay(delayTicks);
 }
 
 void TimerCallback::set_callback(Callback callback) { callback_ = callback; }

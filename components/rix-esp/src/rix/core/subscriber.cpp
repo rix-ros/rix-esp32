@@ -3,11 +3,11 @@
 namespace rix {
 
 Subscriber::Subscriber(const msg::mediator::SubInfo &info,
-                       const Duration &period, SocketFactory socket_factory,
+                       const TaskConfig& config, SocketFactory socket_factory,
                        const Endpoint &rixhub_endpoint)
-    : Spinner(period), info_(info), socket_factory_(socket_factory),
+    : Spinner(config), info_(info), socket_factory_(socket_factory),
       callback_(nullptr), rixhub_endpoint_(rixhub_endpoint),
-      registered_flag_(false), sub_notify_acceptor_(*this, period) {
+      registered_flag_(false), sub_notify_acceptor_(*this, config) {
 
   server_ = socket_factory_();
   server_->set_reuse_address(true);
@@ -52,10 +52,10 @@ Subscriber::Subscriber(const msg::mediator::SubInfo &info,
   Log::debug << "Subscriber created on topic \"" << info_.topic_info.name
              << "\"." << std::endl;
 
-  xTaskCreate(&Spinner::spin_task, "SubscriberTask", 4096, (void *)this, 4,
+  snprintf(task_name_, sizeof(task_name_), "%" PRIu64, info_.id);
+  xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this, config.PRIORITY,
               &task_handle_);
-  xTaskCreate(&Spinner::spin_task, "AcceptorTask", 4096, (void *)this, 4,
-              &task_handle_);
+
 
 #ifdef RIX_MULTITHREADED
   sub_notify_acceptor_.spin_thread =
@@ -65,6 +65,11 @@ Subscriber::Subscriber(const msg::mediator::SubInfo &info,
 }
 
 Subscriber::~Subscriber() {
+
+  if(task_handle_) {
+    vTaskDelete(task_handle_);
+  }
+
   if (registered_flag_) {
     auto client = socket_factory_();
     if (!client) {
@@ -170,9 +175,15 @@ void Subscriber::on_spin() {
   readable.clear();
 }
 
-Subscriber::SubNotifyAcceptor::SubNotifyAcceptor(Subscriber &parent, const Duration& period)
-    :  Spinner(period), parent(parent) {}
-
+Subscriber::SubNotifyAcceptor::SubNotifyAcceptor(Subscriber &parent, const TaskConfig &config)
+    : Spinner(config), parent(parent) {
+      // TODO: Add configurable priority and maybe stack size
+      uint8_t priority = config.PRIORITY;
+      // Make the task name unique by adding 0xA to the subscriber ID
+      snprintf(task_name_, sizeof(task_name_), "%" PRIu64, parent.info_.id + 0xA);
+      xTaskCreate(&Spinner::spin_task, task_name_, priority, this, config.PRIORITY,
+              &task_handle_);
+    }
 void Subscriber::SubNotifyAcceptor::on_spin() {
 
 #ifdef RIX_MULTITHREADED

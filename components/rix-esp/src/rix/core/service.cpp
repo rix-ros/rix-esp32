@@ -3,10 +3,10 @@
 namespace rix {
 
 Service::Service(const msg::mediator::SrvInfo& info,
-                  const Duration& period,
+                  const TaskConfig& config,
                  SocketFactory socket_factory,
                  const Endpoint& rixhub_endpoint)
-    : Spinner(period), info_(info), socket_factory_(socket_factory), rixhub_endpoint_(rixhub_endpoint),
+    : Spinner(config), info_(info), socket_factory_(socket_factory), rixhub_endpoint_(rixhub_endpoint),
       registered_flag_(false), request_instance_(nullptr), response_instance_(nullptr) {
 
   server_ = socket_factory_();
@@ -51,13 +51,17 @@ Service::Service(const msg::mediator::SrvInfo& info,
   registered_flag_ = true;
 
   Log::debug << "Service created for \"" << info_.name << "\"." << std::endl;
-  xTaskCreate(&Spinner::spin_task,"ServiceTask",4096, this, 4, &task_handle_);
+  sniprintf(task_name_, sizeof(task_name_), "%" PRIu64, info_.id);
+  xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this, config.PRIORITY, &task_handle_);
 #ifdef RIX_MULTITHREADED
   spin_thread_ = std::thread([this]() { this->spin(); });
 #endif
 }
 
 Service::~Service() {
+  if (task_handle_) {
+    vTaskDelete(task_handle_);
+  }
   if (registered_flag_) {
     auto client = socket_factory_();
     if (!client) {
