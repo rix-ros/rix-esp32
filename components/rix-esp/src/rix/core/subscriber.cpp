@@ -3,7 +3,7 @@
 namespace rix {
 
 Subscriber::Subscriber(const msg::mediator::SubInfo &info,
-                       const TaskConfig& config, SocketFactory socket_factory,
+                       const TaskConfig &config, SocketFactory socket_factory,
                        const Endpoint &rixhub_endpoint)
     : Spinner(config), info_(info), socket_factory_(socket_factory),
       callback_(nullptr), rixhub_endpoint_(rixhub_endpoint),
@@ -51,22 +51,15 @@ Subscriber::Subscriber(const msg::mediator::SubInfo &info,
 
   Log::debug << "Subscriber created on topic \"" << info_.topic_info.name
              << "\"." << std::endl;
-
   snprintf(task_name_, sizeof(task_name_), "%" PRIu64, info_.id);
-  xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this, config.PRIORITY,
-              &task_handle_);
-
-
-#ifdef RIX_MULTITHREADED
-  sub_notify_acceptor_.spin_thread =
-      std::thread([this]() { this->sub_notify_acceptor_.spin(); });
-  spin_thread_ = std::thread([this]() { this->spin(); });
-#endif
+  xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this,
+              config.PRIORITY, &task_handle_);
+  sub_notify_acceptor_.start();
 }
 
 Subscriber::~Subscriber() {
 
-  if(task_handle_) {
+  if (task_handle_) {
     vTaskDelete(task_handle_);
   }
 
@@ -81,17 +74,6 @@ Subscriber::~Subscriber() {
   }
   Log::debug << "Subscriber on topic \"" << info_.topic_info.name
              << "\" destroyed." << std::endl;
-
-#ifdef RIX_MULTITHREADED
-  sub_notify_acceptor_.shutdown();
-  if (sub_notify_acceptor_.spin_thread.joinable()) {
-    sub_notify_acceptor_.spin_thread.join();
-  }
-  shutdown();
-  if (spin_thread_.joinable()) {
-    spin_thread_.join();
-  }
-#endif
 }
 
 size_t Subscriber::get_publisher_count() const {
@@ -102,10 +84,10 @@ size_t Subscriber::get_publisher_count() const {
 /**< TODO: Implement the spin_once method */
 void Subscriber::on_spin() {
 
-#ifndef RIX_MULTITHREADED
-  // In single-threaded mode, we need to also spin the acceptor
-  sub_notify_acceptor_.spin_once();
-#endif
+  // #ifndef RIX_MULTITHREADED
+  //   // In single-threaded mode, we need to also spin the acceptor
+  //   sub_notify_acceptor_.spin_once();
+  // #endif
 
   rix::util::LockGuard guard(callback_mutex_);
   if (clients_.empty() || !callback_) {
@@ -118,13 +100,7 @@ void Subscriber::on_spin() {
   if (GenericSocket::get_poller()) {
 
     std::vector<std::shared_ptr<GenericSocket>> exceptional;
-
-#ifdef RIX_MULTITHREADED
     Duration timeout(1.0);
-#else
-    Duration timeout(0.0);
-#endif
-
     GenericSocket::poll(sockets, timeout, PollFlag::READ, readable,
                         exceptional);
 
@@ -175,22 +151,25 @@ void Subscriber::on_spin() {
   readable.clear();
 }
 
-Subscriber::SubNotifyAcceptor::SubNotifyAcceptor(Subscriber &parent, const TaskConfig &config)
-    : Spinner(config), parent(parent) {
-      // TODO: Add configurable priority and maybe stack size
-      uint8_t priority = config.PRIORITY;
-      // Make the task name unique by adding 0xA to the subscriber ID
-      snprintf(task_name_, sizeof(task_name_), "%" PRIu64, parent.info_.id + 0xA);
-      xTaskCreate(&Spinner::spin_task, task_name_, priority, this, config.PRIORITY,
-              &task_handle_);
-    }
-void Subscriber::SubNotifyAcceptor::on_spin() {
+Subscriber::SubNotifyAcceptor::SubNotifyAcceptor(Subscriber &parent,
+                                                 const TaskConfig &config)
+    : Spinner(config), parent(parent), config_(config) {
+  // TODO: Add configurable priority and maybe stack size
+  uint8_t priority = config_.PRIORITY;
+  // Make the task name unique by adding 0xA to the subscriber ID
+  printf("Spinning up SubNotifyAcceptor...\n");
+  snprintf(task_name_, sizeof(task_name_), "%" PRIu64, parent.info_.id + 0xA);
+}
 
-#ifdef RIX_MULTITHREADED
+void Subscriber::SubNotifyAcceptor::start() {
+  xTaskCreate(&Spinner::spin_task, task_name_, config_.STACK_SIZE, this,
+              config_.PRIORITY, &task_handle_);
+  // xTaskCreate(&Spinner::spin_task, "SubNotifyAcceptor", config_.STACK_SIZE,
+  // this, config_.PRIORITY,
+  //     &task_handle_);
+}
+void Subscriber::SubNotifyAcceptor::on_spin() {
   Duration timeout(1.0);
-#else
-  Duration timeout(0.0);
-#endif
   // Check to see if rixhub has made a connection
   if (!parent.server_->wait_readable(timeout)) {
     return;
@@ -213,13 +192,13 @@ void Subscriber::SubNotifyAcceptor::on_spin() {
   }
   rix::util::LockGuard guard(parent.callback_mutex_);
 
-  // Connect to the specified publishers (non-blocking)
+  // Connect to the specified publishers (blocking)
   for (const auto &pub : sub_notify.publishers) {
     auto client = parent.socket_factory_();
     if (!client) {
       continue;
     }
-    client->set_blocking(false);
+    client->set_blocking(true);
     client->connect(Endpoint(pub.endpoint.address, pub.endpoint.port));
     parent.clients_.insert(client);
     Log::debug << "Connected to publisher at \"" << pub.endpoint.address << ":"

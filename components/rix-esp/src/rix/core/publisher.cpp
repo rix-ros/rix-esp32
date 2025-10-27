@@ -56,14 +56,9 @@ Publisher::Publisher(const msg::mediator::PubInfo &info, const TaskConfig& confi
   Log::debug << "Publisher created on topic \"" << info_.topic_info.name
              << "\"." << std::endl;
 
-  // xTaskCreate(&Publisher::publisher_task, "PublisherTask", 4096, this, 4,
-  //             &task_handle_);
   snprintf(task_name_, sizeof(task_name_), "%" PRIu64, info_.id);
   xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this, config.PRIORITY,
               &task_handle_);
-// #ifdef RIX_MULTITHREADED
-//   spin_thread_ = std::thread([this]() { this->spin(); });
-// #endif
 }
 
 Publisher::~Publisher() {
@@ -136,12 +131,7 @@ void Publisher::publish(const msg::Message &msg) {
     }
   }
 
-  // TODO: Add a buffer member to Publisher to avoid reallocating each time
-  // TODO: Serialize message into the buffer member once before sending to avoid multiple serializations
-  // TODO: Need to manually serialize the opcode and the message into a single byte array (see GenericSocket::send_message line 62-68)
-
   // Send the message to each current connection
-
   size_t msg_size = msg.size();
   if (msg_size > sizeof(messageBuffer)) {
     Log::error << "Message size exceeds buffer size." << std::endl;
@@ -160,7 +150,6 @@ void Publisher::publish(const msg::Message &msg) {
     auto conn = *it;
 
     // Send the message to the subscriber
-    //if (!conn->send_message(OPCODE::PUB_MESSAGE, msg)) {
     if (!conn->send_message(messageBuffer, offset)) {
       printf("Failed to send message to subscriber.\n");
       connections_.erase(conn);

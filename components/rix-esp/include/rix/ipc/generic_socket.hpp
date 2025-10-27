@@ -58,7 +58,7 @@ public:
   bool is_readable() const { return wait_readable(Duration(0.0)); }
   bool is_exception() const { return wait_exception(Duration(0.0)); }
 
-  // // Write operation and message
+  // Serialize and send message
   virtual bool send_message(uint8_t opcode, const msg::Message &msg) const {
     // Serialize the message
     msg::mediator::Operation op;
@@ -85,55 +85,7 @@ public:
            buffer.size());
     return bytes == buffer.size();
   }
-
-  // virtual bool send_message(uint8_t opcode, const msg::Message &msg) const {
-  //   // ---- Serialize the message ----
-  //   msg::mediator::Operation op;
-  //   op.len = msg.size();
-  //   op.opcode = opcode;
-
-  //   std::vector<uint8_t> buffer(op.size() + msg.size());
-  //   size_t offset = 0;
-  //   op.serialize(buffer.data(), offset);
-  //   msg.serialize(buffer.data(), offset);
-
-  //   // ---- Transmission parameters ----
-  //   constexpr size_t CHUNK_SIZE = 1000;                 // TCP MSS for Wi-Fi
-  //   constexpr TickType_t SEND_DELAY = pdMS_TO_TICKS(5); // pacing delay (5
-  //   ms)
-
-  //   size_t total_sent = 0;
-
-  //   // ---- Send loop with chunking ----
-  //   while (total_sent < buffer.size()) {
-  //     size_t remaining = buffer.size() - total_sent;
-  //     size_t to_send = (remaining > CHUNK_SIZE) ? CHUNK_SIZE : remaining;
-
-  //     ssize_t result = send(buffer.data() + total_sent, to_send, 0);
-
-  //     if (result < 0) {
-  //       if (errno == EAGAIN || errno == EWOULDBLOCK) {
-  //         // Wait for buffer availability
-  //         vTaskDelay(SEND_DELAY);
-  //         continue;
-  //       } else {
-  //         perror("GenericSocket: send_message failed");
-  //         return false; // abort on any real error
-  //       }
-  //     }
-
-  //     total_sent += static_cast<size_t>(result);
-
-  //     // Optional pacing to avoid overflowing LwIP send queue
-  //     vTaskDelay(SEND_DELAY);
-  //   }
-
-  //   printf("GenericSocket: send_message: total sent %zu of %zu bytes\n",
-  //          total_sent, buffer.size());
-
-  //   return (total_sent == buffer.size());
-  // }
-
+  // Send a pre-serialized message from a buffer
   virtual bool send_message(const uint8_t *msg_buf, size_t msg_size) const {
     // Serialize the message
     size_t bytes = 0;

@@ -70,6 +70,7 @@ private:
     SubNotifyAcceptor(SubNotifyAcceptor &&) = delete;
     SubNotifyAcceptor &operator=(SubNotifyAcceptor &&) = delete;
 
+    void start();
     void on_spin() override;
 
     Subscriber &parent;
@@ -77,6 +78,7 @@ private:
     std::thread spin_thread{};
 #endif
   private: 
+    TaskConfig config_;
     char task_name_[32];
     TaskHandle_t task_handle_{nullptr};
   };
@@ -97,7 +99,7 @@ void Subscriber::set_callback(Callback<TMsg> callback) {
     Log::warn << "Message type mismatch in set_callback." << std::endl;
     return;
   }
-  std::lock_guard<std::mutex> guard(callback_mutex_);
+  rix::util::LockGuard guard(callback_mutex_);
   msg_instance_ = std::make_shared<TMsg>();
   callback_ = [callback](const msg::Message &msg) {
     // Safe to static cast because we checked the hash above
