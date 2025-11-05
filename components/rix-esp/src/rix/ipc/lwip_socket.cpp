@@ -46,11 +46,35 @@ bool LWIPSocket::connect(const Endpoint &endpoint) const {
 void LWIPSocket::close() const { ::close(s_); }
 
 ssize_t LWIPSocket::send(const void *buf, size_t len, int flags) const {
-  return ::send(s_, buf, len, flags);
+  int result = ::send(s_, buf, len, flags);
+  if (is_blocking_) 
+  {
+    return result;
+  }
+  else
+  {
+    if(result < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+    {
+      return 0;
+    }
+    return result;
+  }
 }
 
 ssize_t LWIPSocket::recv(void *buf, size_t len, int flags) const {
-  return ::recv(s_, buf, len, flags);
+  int result = ::recv(s_, buf, len, flags);
+  if (is_blocking_) 
+  {
+    return result;
+  }
+  else
+  {
+    if(result < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+    {
+      return 0;
+    }
+    return result;
+  }
 }
 
 bool LWIPSocket::wait_readable(const rix::Duration &timeout) const {

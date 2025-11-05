@@ -1,3 +1,5 @@
+#pragma once
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -24,5 +26,5 @@ public:
 private:
     SemaphoreHandle_t mutex_;
 };
-} // namespace rix::util
+} // namespace util
 } // namespace rix

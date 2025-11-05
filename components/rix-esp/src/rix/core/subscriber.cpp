@@ -54,6 +54,8 @@ Subscriber::Subscriber(const msg::mediator::SubInfo &info,
   snprintf(task_name_, sizeof(task_name_), "%" PRIu64, info_.id);
   xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this,
               config.PRIORITY, &task_handle_);
+  // xTaskCreate(&Spinner::spin_task, "Subscriber", config.STACK_SIZE, this,
+  //             config.PRIORITY, &task_handle_);
   sub_notify_acceptor_.start();
 }
 
@@ -84,78 +86,80 @@ size_t Subscriber::get_publisher_count() const {
 /**< TODO: Implement the spin_once method */
 void Subscriber::on_spin() {
 
-  // #ifndef RIX_MULTITHREADED
-  //   // In single-threaded mode, we need to also spin the acceptor
-  //   sub_notify_acceptor_.spin_once();
-  // #endif
+  {
+    rix::util::LockGuard guard(callback_mutex_);
+    if (clients_.empty() || !callback_) {
+      // Lock will be released when this scope exits
+      // Delay will be called after the lock scope
+    } else {
+      std::vector<std::shared_ptr<GenericSocket>> sockets(clients_.begin(),
+                                                          clients_.end());
+      std::vector<std::shared_ptr<GenericSocket>> readable;
 
-  rix::util::LockGuard guard(callback_mutex_);
-  if (clients_.empty() || !callback_) {
-    return;
-  }
-  std::vector<std::shared_ptr<GenericSocket>> sockets(clients_.begin(),
-                                                      clients_.end());
-  std::vector<std::shared_ptr<GenericSocket>> readable;
+      if (GenericSocket::get_poller()) {
 
-  if (GenericSocket::get_poller()) {
+        std::vector<std::shared_ptr<GenericSocket>> exceptional;
+        Duration timeout(1.0);
+        GenericSocket::poll(sockets, timeout, PollFlag::READ, readable,
+                            exceptional);
 
-    std::vector<std::shared_ptr<GenericSocket>> exceptional;
-    Duration timeout(1.0);
-    GenericSocket::poll(sockets, timeout, PollFlag::READ, readable,
-                        exceptional);
-
-    // Remove any clients that have exceptions
-    for (const auto &conn : exceptional) {
-      clients_.erase(conn);
-      Log::debug << "Removed exceptional publisher from topic \""
-                 << info_.topic_info.name << "\"." << std::endl;
-    }
-    exceptional.clear();
-  } else {
-    // Fallback if poller is not available
-    for (const auto &sock : sockets) {
-      if (sock->is_readable()) {
-        readable.push_back(sock);
+        // Remove any clients that have exceptions
+        for (const auto &conn : exceptional) {
+          clients_.erase(conn);
+          Log::debug << "Removed exceptional publisher from topic \""
+                     << info_.topic_info.name << "\"." << std::endl;
+        }
+        exceptional.clear();
+      } else {
+        // Fallback if poller is not available
+        for (const auto &sock : sockets) {
+          if (sock->is_readable()) {
+            readable.push_back(sock);
+          }
+        }
       }
+
+      auto it = readable.begin();
+      while (it != readable.end()) {
+        auto client = *it;
+
+        // Read a message from the publisher
+        msg::mediator::Operation op;
+        if (!client->recv_message(op, *msg_instance_)) {
+          clients_.erase(client);
+          it++;
+          Log::debug << "Removed exceptional publisher from topic \""
+                     << info_.topic_info.name << "\"." << std::endl;
+          continue;
+        }
+
+        if (op.opcode != OPCODE::PUB_MESSAGE) {
+          clients_.erase(client);
+          it++;
+          Log::debug << "Removed exceptional publisher from topic \""
+                     << info_.topic_info.name << "\"." << std::endl;
+          continue;
+        }
+
+        Log::debugv << "Received message on topic \"" << info_.topic_info.name
+                    << "\"." << std::endl;
+        // Invoke the callback
+        callback_(*msg_instance_);
+        it++;
+      }
+      readable.clear();
     }
   }
 
-  auto it = readable.begin();
-  while (it != readable.end()) {
-    auto client = *it;
-
-    // Read a message from the publisher
-    msg::mediator::Operation op;
-    if (!client->recv_message(op, *msg_instance_)) {
-      clients_.erase(client);
-      it++;
-      Log::debug << "Removed exceptional publisher from topic \""
-                 << info_.topic_info.name << "\"." << std::endl;
-      continue;
-    }
-
-    if (op.opcode != OPCODE::PUB_MESSAGE) {
-      clients_.erase(client);
-      it++;
-      Log::debug << "Removed exceptional publisher from topic \""
-                 << info_.topic_info.name << "\"." << std::endl;
-      continue;
-    }
-
-    Log::debugv << "Received message on topic \"" << info_.topic_info.name
-                << "\"." << std::endl;
-    // Invoke the callback
-    callback_(*msg_instance_);
-    it++;
-  }
-  readable.clear();
+  // Allow other tasks to run - prevent watchdog timeout
+  vTaskDelay(pdMS_TO_TICKS(10)); // 100Hz frequency (10ms period)
 }
 
 Subscriber::SubNotifyAcceptor::SubNotifyAcceptor(Subscriber &parent,
                                                  const TaskConfig &config)
     : Spinner(config), parent(parent), config_(config) {
   // TODO: Add configurable priority and maybe stack size
-  uint8_t priority = config_.PRIORITY;
+  // Priority is used directly in start() method via config_.PRIORITY
   // Make the task name unique by adding 0xA to the subscriber ID
   printf("Spinning up SubNotifyAcceptor...\n");
   snprintf(task_name_, sizeof(task_name_), "%" PRIu64, parent.info_.id + 0xA);
@@ -165,8 +169,7 @@ void Subscriber::SubNotifyAcceptor::start() {
   xTaskCreate(&Spinner::spin_task, task_name_, config_.STACK_SIZE, this,
               config_.PRIORITY, &task_handle_);
   // xTaskCreate(&Spinner::spin_task, "SubNotifyAcceptor", config_.STACK_SIZE,
-  // this, config_.PRIORITY,
-  //     &task_handle_);
+  //             this, config_.PRIORITY, &task_handle_);
 }
 void Subscriber::SubNotifyAcceptor::on_spin() {
   Duration timeout(1.0);
@@ -191,20 +194,22 @@ void Subscriber::SubNotifyAcceptor::on_spin() {
     return;
   }
   rix::util::LockGuard guard(parent.callback_mutex_);
-
-  // Connect to the specified publishers (blocking)
-  for (const auto &pub : sub_notify.publishers) {
-    auto client = parent.socket_factory_();
-    if (!client) {
-      continue;
+  {
+    // Connect to the specified publishers (non-blocking)
+    for (const auto &pub : sub_notify.publishers) {
+      auto client = parent.socket_factory_();
+      if (!client) {
+        continue;
+      }
+      client->set_blocking(false);
+      client->connect(Endpoint(pub.endpoint.address, pub.endpoint.port));
+      parent.clients_.insert(client);
+      Log::debug << "Connected to publisher at \"" << pub.endpoint.address
+                 << ":" << pub.endpoint.port << "\" on topic \""
+                 << pub.topic_info.name << "\"." << std::endl;
     }
-    client->set_blocking(true);
-    client->connect(Endpoint(pub.endpoint.address, pub.endpoint.port));
-    parent.clients_.insert(client);
-    Log::debug << "Connected to publisher at \"" << pub.endpoint.address << ":"
-               << pub.endpoint.port << "\" on topic \"" << pub.topic_info.name
-               << "\"." << std::endl;
   }
+  vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 } // namespace rix

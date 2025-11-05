@@ -17,8 +17,7 @@ public:
     Spinner* self = static_cast<Spinner*>(pvParameters);
     while (self->ok()) {
       self->spin_once();
-      // Leave delay to derived classes select calls or IO tasks
-      // vTaskDelay(self->taskConfig_.PERIOD.to_milliseconds() / portTICK_PERIOD_MS);
+      // Leave delay to derived classes in their on_spin implementations
     }
     vTaskDelete(NULL); // Delete itself when done
   }

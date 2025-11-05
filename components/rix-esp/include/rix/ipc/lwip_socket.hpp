@@ -35,6 +35,7 @@ public:
 private:
   LWIPSocket(int s);
   int s_;
+  mutable bool is_blocking_;
 };
 
 } // namespace rix::ipc

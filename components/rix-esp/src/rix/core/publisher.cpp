@@ -57,7 +57,9 @@ Publisher::Publisher(const msg::mediator::PubInfo &info, const TaskConfig& confi
              << "\"." << std::endl;
 
   snprintf(task_name_, sizeof(task_name_), "%" PRIu64, info_.id);
-  xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this, config.PRIORITY,
+  // xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this, config.PRIORITY,
+  //             &task_handle_);
+    xTaskCreate(&Spinner::spin_task, "Publisher", config.STACK_SIZE, this, config.PRIORITY,
               &task_handle_);
 }
 
