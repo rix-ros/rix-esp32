@@ -6,10 +6,10 @@
 
 #include "rix/core/common.hpp"
 #include "rix/core/spinner.hpp"
-#include "rix/msg/mediator/Operation.hpp"
-#include "rix/msg/mediator/SrvInfo.hpp"
-#include "rix/msg/mediator/Status.hpp"
-#include "rix/msg/standard/UInt32.hpp"
+#include "rix/sys_msgs/Operation.hpp"
+#include "rix/sys_msgs/SrvInfo.hpp"
+#include "rix/sys_msgs/Status.hpp"
+#include "rix/std_msgs/UInt32.hpp"
 #include "rix/util/log.hpp"
 
 namespace rix {
@@ -33,22 +33,26 @@ public:
   void set_callback(Callback<TRequest, TResponse> callback);
 
 private:
-  using CallbackUntyped = std::function<void(const msg::Message&, msg::Message&)>;
-  msg::mediator::SrvInfo         info_;
+  using CallbackUntyped = std::function<void(const Message&, Message&)>;
+  sys_msgs::SrvInfo         info_;
   std::shared_ptr<GenericSocket> server_;
   SocketFactory                  socket_factory_;
   CallbackUntyped                callback_;
-  mutable std::mutex             callback_mutex_;
+  //mutable std::mutex             callback_mutex_;
+  SemaphoreHandle_t              callback_mutex_ = xSemaphoreCreateMutex();
+  TaskHandle_t                   task_handle_{nullptr};
+  char                           task_name_[32];
   Endpoint                       rixhub_endpoint_;
   std::atomic<bool>              registered_flag_;
-  std::shared_ptr<msg::Message>  request_instance_;
-  std::shared_ptr<msg::Message>  response_instance_;
+  std::shared_ptr<Message>  request_instance_;
+  std::shared_ptr<Message>  response_instance_;
 
 #ifdef RIX_MULTITHREADED
   std::thread spin_thread_{};
 #endif
 
-  Service(const msg::mediator::SrvInfo& info,
+  Service(const sys_msgs::SrvInfo& info,
+          const TaskConfig&                config,
           SocketFactory                 socket_factory,
           const Endpoint&               rixhub_endpoint);
 
@@ -59,10 +63,10 @@ private:
 
 template <typename TRequest, typename TResponse>
 void Service::set_callback(Callback<TRequest, TResponse> callback) {
-  static_assert(std::is_base_of<msg::Message, TRequest>::value,
-                "TRequest must be a subclass of msg::Message.");
-  static_assert(std::is_base_of<msg::Message, TResponse>::value,
-                "TResponse must be a subclass of msg::Message.");
+  static_assert(std::is_base_of<Message, TRequest>::value,
+                "TRequest must be a subclass of Message.");
+  static_assert(std::is_base_of<Message, TResponse>::value,
+                "TResponse must be a subclass of Message.");
 
   if (TRequest().hash() != info_.request_hash ||
       TResponse().hash() != info_.response_hash) {
@@ -71,7 +75,7 @@ void Service::set_callback(Callback<TRequest, TResponse> callback) {
   }
 
   std::lock_guard<std::mutex> guard(callback_mutex_);
-  callback_ = [callback](const msg::Message& request, msg::Message& response) {
+  callback_ = [callback](const Message& request, Message& response) {
     // Safe to static cast because we checked the hash above
     const TRequest& typed_request = static_cast<const TRequest&>(request);
     TResponse&      typed_response = static_cast<TResponse&>(response);

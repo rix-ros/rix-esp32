@@ -36,6 +36,6 @@ public:
 };
 
 // Define the default poller here
-using Poller = PollPoller;
+using Poller = SelectPoller;
 
 } // namespace rix

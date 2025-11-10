@@ -2,10 +2,11 @@
 
 namespace rix {
 
-Service::Service(const msg::mediator::SrvInfo& info,
+Service::Service(const sys_msgs::SrvInfo& info,
+                  const TaskConfig& config,
                  SocketFactory socket_factory,
                  const Endpoint& rixhub_endpoint)
-    : info_(info), socket_factory_(socket_factory), rixhub_endpoint_(rixhub_endpoint),
+    : Spinner(config), info_(info), socket_factory_(socket_factory), rixhub_endpoint_(rixhub_endpoint),
       registered_flag_(false), request_instance_(nullptr), response_instance_(nullptr) {
 
   server_ = socket_factory_();
@@ -36,8 +37,8 @@ Service::Service(const msg::mediator::SrvInfo& info,
     return;
   }
 
-  msg::mediator::Operation op;
-  msg::mediator::Status status;
+  sys_msgs::Operation op;
+  sys_msgs::Status status;
   if (!client->recv_message(op, status)) {
     shutdown();
     return;
@@ -50,13 +51,17 @@ Service::Service(const msg::mediator::SrvInfo& info,
   registered_flag_ = true;
 
   Log::debug << "Service created for \"" << info_.name << "\"." << std::endl;
-
+  sniprintf(task_name_, sizeof(task_name_), "%" PRIu64, info_.id);
+  xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this, config.PRIORITY, &task_handle_);
 #ifdef RIX_MULTITHREADED
   spin_thread_ = std::thread([this]() { this->spin(); });
 #endif
 }
 
 Service::~Service() {
+  if (task_handle_) {
+    vTaskDelete(task_handle_);
+  }
   if (registered_flag_) {
     auto client = socket_factory_();
     if (!client) {
@@ -81,7 +86,7 @@ void Service::on_spin() {
   if (!callback_) {
     return;
   }
-  std::lock_guard lock(callback_mutex_);
+  rix::util::LockGuard guard(callback_mutex_);
 
   // Check to see if a subscriber has made a connection
   if (!server_->is_readable())
@@ -94,7 +99,7 @@ void Service::on_spin() {
   }
 
   // Read the request message
-  msg::mediator::Operation op;
+  sys_msgs::Operation op;
   if (!conn->recv_message(op, *request_instance_))
     return;
 

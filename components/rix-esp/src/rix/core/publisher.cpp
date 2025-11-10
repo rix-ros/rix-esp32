@@ -2,8 +2,10 @@
 
 namespace rix {
 
-Publisher::Publisher(const msg::mediator::PubInfo& info, SocketFactory factory, Endpoint rixhub_endpoint)
-    : info_(info), socket_factory_(factory), rixhub_endpoint_(rixhub_endpoint), registered_flag_(false) {
+Publisher::Publisher(const sys_msgs::PubInfo &info, const TaskConfig& config, SocketFactory factory,
+                     Endpoint rixhub_endpoint)
+    : Spinner(config), info_(info), socket_factory_(factory), rixhub_endpoint_(rixhub_endpoint),
+      registered_flag_(false) {
 
   server_ = socket_factory_();
   if (!server_) {
@@ -37,8 +39,8 @@ Publisher::Publisher(const msg::mediator::PubInfo& info, SocketFactory factory, 
     return;
   }
 
-  msg::mediator::Operation op;
-  msg::mediator::Status status;
+  sys_msgs::Operation op;
+  sys_msgs::Status status;
   if (!client->recv_message(op, status)) {
     shutdown();
     return;
@@ -49,16 +51,23 @@ Publisher::Publisher(const msg::mediator::PubInfo& info, SocketFactory factory, 
   }
 
   registered_flag_ = true;
+  shutdown_flag_ = false;
 
-  Log::debug << "Publisher created on topic \"" << info_.topic_info.name << "\"." << std::endl;
+  Log::debug << "Publisher created on topic \"" << info_.topic_info.name
+             << "\"." << std::endl;
 
-#ifdef RIX_MULTITHREADED
-  spin_thread_ = std::thread([this]() { this->spin(); });
-#endif
+  snprintf(task_name_, sizeof(task_name_), "%" PRIu64, info_.id);
+  // xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this, config.PRIORITY,
+  //             &task_handle_);
+    xTaskCreate(&Spinner::spin_task, "Publisher", config.STACK_SIZE, this, config.PRIORITY,
+              &task_handle_);
 }
 
 Publisher::~Publisher() {
-  // Deregister publisher with rixhub
+  // Deregister publisher with rixhubS
+  if (task_handle_) {
+    vTaskDelete(task_handle_);
+  }
   if (registered_flag_) {
     auto client = socket_factory_();
     if (!client) {
@@ -68,7 +77,8 @@ Publisher::~Publisher() {
       client->send_message(OPCODE::PUB_DEREGISTER, info_);
     }
   }
-  Log::debug << "Publisher on topic \"" << info_.topic_info.name << "\" destroyed." << std::endl;
+  Log::debug << "Publisher on topic \"" << info_.topic_info.name
+             << "\" destroyed." << std::endl;
 
 #ifdef RIX_MULTITHREADED
   shutdown();
@@ -78,7 +88,7 @@ Publisher::~Publisher() {
 #endif
 }
 
-void Publisher::publish(const msg::Message& msg) {
+void Publisher::publish(const Message &msg) {
   if (!ok()) {
     return;
   }
@@ -89,54 +99,75 @@ void Publisher::publish(const msg::Message& msg) {
     return;
   }
 
-  std::lock_guard<std::mutex> lock(connections_mutex_);
+  rix::util::LockGuard guard(connections_mutex_);
+
   if (connections_.empty()) {
     return;
   }
 
-  std::vector<std::shared_ptr<GenericSocket>> sockets(connections_.begin(), connections_.end());
+  std::vector<std::shared_ptr<GenericSocket>> sockets(connections_.begin(),
+                                                      connections_.end());
   std::vector<std::shared_ptr<GenericSocket>> writable;
 
   if (GenericSocket::get_poller()) {
     std::vector<std::shared_ptr<GenericSocket>> exceptional;
-    GenericSocket::poll(sockets, Duration(0.0), PollFlag::WRITE, writable, exceptional);
+    GenericSocket::poll(sockets, Duration(5), PollFlag::WRITE, writable,
+                        exceptional);
 
     // Remove any clients that have exceptions
-    for (const auto& conn : exceptional) {
+    for (const auto &conn : exceptional) {
       connections_.erase(conn);
-      Log::debug << "Removed exceptional subscriber from topic \"" << info_.topic_info.name << "\"." << std::endl;
+      Log::debug << "Removed exceptional subscriber from topic \""
+                 << info_.topic_info.name << "\"." << std::endl;
     }
   } else {
     // Fallback if poller is not available
-    for (const auto& sock : sockets) {
+    for (const auto &sock : sockets) {
       if (sock->is_writable()) {
         writable.push_back(sock);
       } else {
         connections_.erase(sock);
-        Log::debug << "Removed exceptional subscriber from topic \"" << info_.topic_info.name << "\"." << std::endl;
+        Log::debug << "Removed exceptional subscriber from topic \""
+                   << info_.topic_info.name << "\"." << std::endl;
       }
     }
   }
 
   // Send the message to each current connection
+  // size_t msg_size = msg.size();
+  // if (msg_size > sizeof(messageBuffer)) {
+  //   Log::error << "Message size exceeds buffer size." << std::endl;
+  //   return;
+  // }
+  // size_t offset = 0;
+
+  // sys_msgs::Operation op;
+  // op.len = msg_size;
+  // op.opcode = OPCODE::PUB_MESSAGE;
+  // op.serialize(messageBuffer, offset);
+  // msg.serialize(messageBuffer, offset);
+
   auto it = writable.begin();
   while (it != writable.end()) {
     auto conn = *it;
 
     // Send the message to the subscriber
     if (!conn->send_message(OPCODE::PUB_MESSAGE, msg)) {
+      printf("Failed to send message to subscriber.\n");
       connections_.erase(conn);
       it++;
-      Log::debug << "Removed exceptional subscriber from topic \"" << info_.topic_info.name << "\"." << std::endl;
       continue;
+    }
+    else
+    {
+      printf("Sent message to subscriber.\n");
     }
     it++;
   }
-  Log::debugv << "Published message on topic \"" << info_.topic_info.name << "\"." << std::endl;
 }
 
 size_t Publisher::get_subscriber_count() const {
-  std::lock_guard<std::mutex> guard(connections_mutex_);
+  rix::util::LockGuard guard(connections_mutex_);
   return connections_.size();
 }
 
@@ -154,10 +185,11 @@ void Publisher::on_spin() {
   }
 
   // Store the connection
-  std::lock_guard<std::mutex> guard(connections_mutex_);
-  Log::debug << "Accepted new subscriber at \"" << remote_endpoint.address << ":" << remote_endpoint.port
-             << "\" on topic \"" << info_.topic_info.name << "\"." << std::endl;
+  rix::util::LockGuard guard(connections_mutex_);
+  Log::debug << "Accepted new subscriber at \"" << remote_endpoint.address
+             << ":" << remote_endpoint.port << "\" on topic \""
+             << info_.topic_info.name << "\"." << std::endl;
   connections_.insert(conn);
 }
 
-} // namespace rix
+}

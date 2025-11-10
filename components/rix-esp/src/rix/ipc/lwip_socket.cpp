@@ -1,4 +1,10 @@
 #include "rix/ipc/lwip_socket.hpp"
+#include <sys/uio.h>
+
+extern "C" {
+  ssize_t lwip_writev(int s, const struct iovec *iov, int iovcnt);
+  ssize_t lwip_readv(int s, const struct iovec *iov, int iovcnt);
+}
 
 namespace rix::ipc {
 
@@ -45,12 +51,104 @@ bool LWIPSocket::connect(const Endpoint &endpoint) const {
 
 void LWIPSocket::close() const { ::close(s_); }
 
+ssize_t LWIPSocket::writev(const ConstMessageSegment* segments, size_t segment_count) const {
+  struct iovec* iov = new struct iovec[segment_count];
+  ssize_t to_send = 0;
+  for (int i = 0; i < segment_count; ++i) {
+    iov[i].iov_base = const_cast<uint8_t*>(segments[i].ptr());
+    iov[i].iov_len = segments[i].len();
+    to_send += segments[i].len();
+  }
+  ssize_t bytes_sent = 0;
+  while (bytes_sent < to_send) {
+    ssize_t result = lwip_writev(s_, iov, segment_count);
+    if (result <= 0) {
+      break;
+    }
+    bytes_sent += result;
+
+    // Adjust iov to account for bytes already sent
+    ssize_t offset = result;
+    for (int i = 0; i < segment_count; ++i) {
+      if (offset >= static_cast<ssize_t>(iov[i].iov_len)) {
+        offset -= iov[i].iov_len;
+        iov[i].iov_base = static_cast<uint8_t*>(iov[i].iov_base) + iov[i].iov_len;
+        iov[i].iov_len = 0;
+      } else {
+        iov[i].iov_base = static_cast<uint8_t*>(iov[i].iov_base) + offset;
+        iov[i].iov_len -= offset;
+        break;
+      }
+    }
+  }
+  delete[] iov;
+  return bytes_sent;
+}
+
+ssize_t LWIPSocket::readv(MessageSegment* segments, size_t segment_count) const {
+  struct iovec* iov = new struct iovec[segment_count];
+  ssize_t to_read = 0;
+  for (int i = 0; i < segment_count; ++i) {
+    iov[i].iov_base = segments[i].ptr();
+    iov[i].iov_len = segments[i].len();
+    to_read += segments[i].len();
+  }
+  ssize_t bytes_received = 0;
+  while (bytes_received < to_read) {
+    ssize_t result = lwip_readv(s_, iov, segment_count);
+    if (result <= 0) {
+      break;
+    }
+    bytes_received += result;
+
+    // Adjust iov to account for bytes already received
+    ssize_t offset = result;
+    for (int i = 0; i < segment_count; ++i) {
+      if (offset >= static_cast<ssize_t>(iov[i].iov_len)) {
+        offset -= iov[i].iov_len;
+        iov[i].iov_base = static_cast<uint8_t*>(iov[i].iov_base) + iov[i].iov_len;
+        iov[i].iov_len = 0;
+      } else {
+        iov[i].iov_base = static_cast<uint8_t*>(iov[i].iov_base) + offset;
+        iov[i].iov_len -= offset;
+        break;
+      }
+    }
+  }
+  delete[] iov;
+  return bytes_received;
+}
+
 ssize_t LWIPSocket::send(const void *buf, size_t len, int flags) const {
-  return ::send(s_, buf, len, flags);
+  int result = ::send(s_, buf, len, flags);
+  if (is_blocking_) 
+  {
+    return result;
+  }
+  else
+  {
+    if(result < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+    {
+      return 0;
+    }
+    return result;
+  }
 }
 
 ssize_t LWIPSocket::recv(void *buf, size_t len, int flags) const {
-  return ::recv(s_, buf, len, flags);
+  int result = ::recv(s_, buf, len, flags);
+  if (is_blocking_) 
+  {
+    return result;
+  }
+  else
+  {
+    if(result < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+    {
+      return 0;
+    }
+    return result;
+  }
 }
 
 bool LWIPSocket::wait_readable(const rix::Duration &timeout) const {

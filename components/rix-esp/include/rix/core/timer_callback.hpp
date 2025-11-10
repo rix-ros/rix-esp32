@@ -22,7 +22,7 @@ public:
   using Callback = std::function<void(const Event& event)>;
   template <typename TObj> using ObjCallback = std::function<void(TObj*, const Event& event)>;
 
-  TimerCallback(const Duration& duration, Callback callback);
+  TimerCallback(const TaskConfig& config, Callback callback);
   TimerCallback(const TimerCallback&) = delete;
   TimerCallback& operator=(const TimerCallback&) = delete;
   TimerCallback(TimerCallback&&) = delete;
@@ -49,14 +49,13 @@ private:
   using Spinner::spin_once;
   void on_spin() override;
 
+  char task_name_[32];
   Duration duration_;
   Event event_;
   Callback callback_;
-  std::mutex callback_mutex_;
-
-#ifdef RIX_MULTITHREADED
-  std::thread spin_thread_{};
-#endif
+  std::atomic<bool> shutdown_flag_{false};
+  TaskHandle_t task_handle_{nullptr};
+  SemaphoreHandle_t callback_mutex_ = xSemaphoreCreateMutex();
 };
 
 } // namespace rix

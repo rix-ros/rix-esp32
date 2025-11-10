@@ -13,18 +13,18 @@
 #include "rix/core/subscriber.hpp"
 #include "rix/core/timer_callback.hpp"
 #include "rix/ipc/socket.hpp"
-#include "rix/msg/mediator/NodeInfo.hpp"
-#include "rix/msg/mediator/ParamInfo.hpp"
-#include "rix/msg/mediator/SystemInfo.hpp"
-#include "rix/msg/standard/UInt64.hpp"
-#include "rix/msg/standard/Void.hpp"
+#include "rix/sys_msgs/NodeInfo.hpp"
+#include "rix/sys_msgs/ParamInfo.hpp"
+#include "rix/sys_msgs/SystemInfo.hpp"
+#include "rix/std_msgs/UInt64.hpp"
+#include "rix/std_msgs/Void.hpp"
 #include "rix/util/log.hpp"
 
 namespace rix {
 
 class Node : public Spinner {
 public:
-  Node(const std::string& name, const Endpoint& endpoint = Endpoint(DEFAULT_IP, 0));
+  Node(const std::string& name, const TaskConfig& config, const Endpoint& endpoint = Endpoint(DEFAULT_IP, 0));
 
   Node(const Node&) = delete;
   Node& operator=(const Node&) = delete;
@@ -34,12 +34,12 @@ public:
   virtual ~Node();
 
   template <typename TMsg>
-  std::shared_ptr<Publisher> create_publisher(const std::string& topic,
+  std::shared_ptr<Publisher> create_publisher(const std::string& topic, const TaskConfig& config,
                                               const Endpoint& endpoint = Endpoint(DEFAULT_IP, 0));
 
   // Legacy API with explicit template parameter (for backward compatibility)
   template <typename TMsg>
-  std::shared_ptr<Subscriber> create_subscriber(const std::string& topic,
+  std::shared_ptr<Subscriber> create_subscriber(const std::string& topic, const TaskConfig& config,
                                                 Subscriber::Callback<TMsg> callback,
                                                 const Endpoint& endpoint = Endpoint(DEFAULT_IP, 0));
 
@@ -66,20 +66,20 @@ public:
         topic, [instance, callback](const TMsg& msg) { (instance->*callback)(msg); }, endpoint);
   }
 
-  std::shared_ptr<TimerCallback> create_timer(const Duration& d, TimerCallback::Callback callback);
+  std::shared_ptr<TimerCallback> create_timer(const TaskConfig& config, TimerCallback::Callback callback);
 
   template <typename Class>
   std::shared_ptr<TimerCallback>
-  create_timer(const Duration& d, void (Class::*callback)(const TimerCallback::Event&), Class* instance) {
-    return create_timer(d, [instance, callback](const TimerCallback::Event& event) { (instance->*callback)(event); });
+  create_timer(const TaskConfig& config, void (Class::*callback)(const TimerCallback::Event&), Class* instance) {
+    return create_timer(config, [instance, callback](const TimerCallback::Event& event) { (instance->*callback)(event); });
   }
 
   template <typename TRequest, typename TResponse>
-  std::shared_ptr<ServiceClient> create_service_client(const std::string& service);
+  std::shared_ptr<ServiceClient> create_service_client(const std::string& service, const TaskConfig& config);
 
   // Legacy API with explicit template parameters (for backward compatibility)
   template <typename TRequest, typename TResponse>
-  std::shared_ptr<Service> create_service(const std::string& service,
+  std::shared_ptr<Service> create_service(const std::string& service, const TaskConfig& config,
                                           Service::Callback<TRequest, TResponse> callback,
                                           const Endpoint& endpoint = Endpoint(DEFAULT_IP, 0));
 
@@ -112,7 +112,7 @@ public:
   template <typename TParam> bool set_parameter(const std::string& name, const TParam& parameter);
   template <typename TParam> bool get_parameter(const std::string& name, TParam& parameter);
 
-  bool get_system_info(msg::mediator::SystemInfo& info);
+  bool get_system_info(sys_msgs::SystemInfo& info);
 
   void on_spin() override;
 
@@ -121,61 +121,62 @@ public:
 
 private:
   Endpoint rixhub_endpoint_;
-  msg::mediator::NodeInfo info_;
+  sys_msgs::NodeInfo info_;
   std::vector<std::shared_ptr<Spinner>> components_;
   std::shared_ptr<GenericSocket> server_;
   std::atomic<bool> registered_flag_;
+  TaskHandle_t task_handle_{nullptr};
   static inline SocketFactory socket_factory_{create_socket};
   static inline IDFactory id_factory_{default_id_generator};
 
-  std::shared_ptr<Publisher> create_publisher(const msg::mediator::TopicInfo& topic_info,
+  std::shared_ptr<Publisher> create_publisher(const sys_msgs::TopicInfo& topic_info, const TaskConfig& config,
                                               const Endpoint& rixhub_endpoint,
                                               const Endpoint& endpoint);
 
-  std::shared_ptr<Subscriber> create_subscriber(const msg::mediator::TopicInfo& topic_info,
+  std::shared_ptr<Subscriber> create_subscriber(const sys_msgs::TopicInfo& topic_info, const TaskConfig& config,
                                                 const Endpoint& rixhub_endpoint,
                                                 const Endpoint& endpoint);
 
   std::shared_ptr<Service>
-  create_service(msg::mediator::SrvInfo& service_info, const Endpoint& rixhub_endpoint, const Endpoint& endpoint);
+  create_service(sys_msgs::SrvInfo& service_info, const TaskConfig& config, const Endpoint& rixhub_endpoint, const Endpoint& endpoint);
 
-  std::shared_ptr<ServiceClient> create_service_client(const msg::mediator::SrvRequest& service_request,
+  std::shared_ptr<ServiceClient> create_service_client(const sys_msgs::SrvRequest& service_request, const TaskConfig& config,
                                                        const Endpoint& rixhub_endpoint,
                                                        const Endpoint& endpoint);
 };
 
 template <typename TMsg>
-std::shared_ptr<Publisher> Node::create_publisher(const std::string& topic, const Endpoint& endpoint) {
-  static_assert(std::is_base_of<msg::Message, TMsg>::value, "TMsg must be a subclass of msg::Message.");
+std::shared_ptr<Publisher> Node::create_publisher(const std::string& topic, const TaskConfig& config, const Endpoint& endpoint) {
+  static_assert(std::is_base_of<Message, TMsg>::value, "TMsg must be a subclass of Message.");
   if (!ok()) {
     Log::error << "Node is shutdown, cannot create publisher." << std::endl;
     return nullptr;
   }
   // Get topic information
-  msg::mediator::TopicInfo topic_info;
+  sys_msgs::TopicInfo topic_info;
   topic_info.name = topic;
   topic_info.message_hash = TMsg().hash();
 
   // Invoke private implementation
-  return create_publisher(topic_info, rixhub_endpoint_, endpoint);
+  return create_publisher(topic_info, config, rixhub_endpoint_, endpoint);
 }
 
 template <typename TMsg>
 std::shared_ptr<Subscriber>
-Node::create_subscriber(const std::string& topic, Subscriber::Callback<TMsg> callback, const Endpoint& endpoint) {
-  static_assert(std::is_base_of<msg::Message, TMsg>::value, "TMsg must be a subclass of msg::Message.");
+Node::create_subscriber(const std::string& topic, const TaskConfig& config, Subscriber::Callback<TMsg> callback, const Endpoint& endpoint) {
+  static_assert(std::is_base_of<Message, TMsg>::value, "TMsg must be a subclass of Message.");
   if (!ok()) {
     Log::error << "Node is shutdown, cannot create subscriber." << std::endl;
     return nullptr;
   }
 
   // Get topic information
-  msg::mediator::TopicInfo topic_info;
+  sys_msgs::TopicInfo topic_info;
   topic_info.name = topic;
   topic_info.message_hash = TMsg().hash();
 
   // Invoke private implementation
-  auto sub = create_subscriber(topic_info, rixhub_endpoint_, endpoint);
+  auto sub = create_subscriber(topic_info, config, rixhub_endpoint_, endpoint);
 
   // Set callback (need template info to do this)
   if (sub) {
@@ -184,34 +185,34 @@ Node::create_subscriber(const std::string& topic, Subscriber::Callback<TMsg> cal
   return sub;
 }
 
-inline std::shared_ptr<TimerCallback> Node::create_timer(const Duration& d, TimerCallback::Callback callback) {
+inline std::shared_ptr<TimerCallback> Node::create_timer(const TaskConfig& config, TimerCallback::Callback callback) {
   if (!ok()) {
     Log::error << "Node is shutdown, cannot create timer." << std::endl;
     return nullptr;
   }
-  auto timer = std::make_shared<TimerCallback>(d, callback);
+  auto timer = std::make_shared<TimerCallback>(config, callback);
   components_.push_back(timer);
   return timer;
 }
 
 template <typename TRequest, typename TResponse>
-std::shared_ptr<Service> Node::create_service(const std::string& service,
+std::shared_ptr<Service> Node::create_service(const std::string& service, const TaskConfig& config,
                                               Service::Callback<TRequest, TResponse> callback,
                                               const Endpoint& endpoint) {
-  static_assert(std::is_base_of<msg::Message, TRequest>::value, "TRequest must be a subclass of msg::Message.");
-  static_assert(std::is_base_of<msg::Message, TResponse>::value, "TResponse must be a subclass of msg::Message.");
+  static_assert(std::is_base_of<Message, TRequest>::value, "TRequest must be a subclass of Message.");
+  static_assert(std::is_base_of<Message, TResponse>::value, "TResponse must be a subclass of Message.");
 
   if (!ok()) {
     Log::error << "Node is shutdown, cannot create service." << std::endl;
     return nullptr;
   }
 
-  msg::mediator::SrvInfo service_info;
+  sys_msgs::SrvInfo service_info;
   service_info.name = service;
   service_info.request_hash = TRequest().hash();
   service_info.response_hash = TResponse().hash();
 
-  auto srv = create_service(service_info, rixhub_endpoint_, endpoint);
+  auto srv = create_service(service_info, config, rixhub_endpoint_, endpoint);
   if (srv) {
     srv->set_callback(callback);
   }
@@ -219,32 +220,32 @@ std::shared_ptr<Service> Node::create_service(const std::string& service,
 }
 
 template <typename TRequest, typename TResponse>
-std::shared_ptr<ServiceClient> Node::create_service_client(const std::string& service) {
-  static_assert(std::is_base_of<msg::Message, TRequest>::value, "TRequest must be a subclass of msg::Message.");
-  static_assert(std::is_base_of<msg::Message, TResponse>::value, "TResponse must be a subclass of msg::Message.");
+std::shared_ptr<ServiceClient> Node::create_service_client(const std::string& service, const TaskConfig& config) {
+  static_assert(std::is_base_of<Message, TRequest>::value, "TRequest must be a subclass of Message.");
+  static_assert(std::is_base_of<Message, TResponse>::value, "TResponse must be a subclass of Message.");
 
   if (!ok()) {
     Log::error << "Node is shutdown, cannot create service client." << std::endl;
     return nullptr;
   }
 
-  msg::mediator::SrvRequest service_request;
+  sys_msgs::SrvRequest service_request;
   service_request.name = service;
   service_request.node_id = info_.id;
   service_request.request_hash = TRequest().hash();
   service_request.response_hash = TResponse().hash();
 
-  return create_service_client(service_request, rixhub_endpoint_, Endpoint());
+  return create_service_client(service_request, config, rixhub_endpoint_, Endpoint());
 }
 
 template <typename TParam> bool Node::set_parameter(const std::string& name, const TParam& parameter) {
-  static_assert(std::is_base_of<msg::Message, TParam>::value, "TParam must be a subclass of msg::Message.");
+  static_assert(std::is_base_of<Message, TParam>::value, "TParam must be a subclass of Message.");
   if (!ok()) {
     Log::error << "Node is shutdown, cannot set parameter." << std::endl;
     return false;
   }
 
-  msg::mediator::ParamInfo info;
+  sys_msgs::ParamInfo info;
   info.id = info_.id;
   info.name = name;
   info.message_hash = parameter.hash();
@@ -260,8 +261,8 @@ template <typename TParam> bool Node::set_parameter(const std::string& name, con
     return false;
   }
 
-  msg::mediator::Operation op;
-  msg::mediator::Status status;
+  sys_msgs::Operation op;
+  sys_msgs::Status status;
   if (!client->recv_message(op, status)) {
     return false;
   }
@@ -274,17 +275,17 @@ template <typename TParam> bool Node::set_parameter(const std::string& name, con
 }
 
 template <typename TParam> bool Node::get_parameter(const std::string& name, TParam& parameter) {
-  static_assert(std::is_base_of<msg::Message, TParam>::value, "TParam must be a subclass of msg::Message.");
+  static_assert(std::is_base_of<Message, TParam>::value, "TParam must be a subclass of Message.");
   if (!ok()) {
     Log::error << "Node is shutdown, cannot get parameter." << std::endl;
     return false;
   }
 
-  msg::mediator::ParamInfo info;
+  sys_msgs::ParamInfo info;
   info.id = info_.id;
   info.name = name;
   info.message_hash = parameter.hash();
-  msg::mediator::ParamInfo info_received;
+  sys_msgs::ParamInfo info_received;
 
   auto client = socket_factory_();
   if (!client->connect(rixhub_endpoint_)) {
@@ -293,7 +294,7 @@ template <typename TParam> bool Node::get_parameter(const std::string& name, TPa
   if (!client->send_message(OPCODE::PARAM_GET_REQUEST, info)) {
     return false;
   }
-  msg::mediator::Operation op;
+  sys_msgs::Operation op;
   if (!client->recv_message(op, info_received)) {
     return false;
   }

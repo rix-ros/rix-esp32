@@ -6,12 +6,21 @@ namespace rix {
 
 class Spinner {
 public:
-  Spinner() = default;
+  Spinner(const TaskConfig& config) : taskConfig_(config) {}
   Spinner(const Spinner& other) = default;
   Spinner& operator=(const Spinner& other) = default;
   Spinner(Spinner&& other) = default;
   Spinner& operator=(Spinner&& other) = default;
   virtual ~Spinner() = default;
+
+  static void spin_task(void* pvParameters) {
+    Spinner* self = static_cast<Spinner*>(pvParameters);
+    while (self->ok()) {
+      self->spin_once();
+      // Leave delay to derived classes in their on_spin implementations
+    }
+    vTaskDelete(NULL); // Delete itself when done
+  }
 
   void spin() {
     while (ok()) {
@@ -49,7 +58,7 @@ public:
 
 private:
   bool shutdown_flag_{false};
-
+  TaskConfig taskConfig_;
   virtual void on_spin() = 0;
 };
 
