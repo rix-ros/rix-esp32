@@ -1,8 +1,8 @@
 #include "nvs_flash.h"
 #include "rix/core/mediator.hpp"
 #include "rix/core/node.hpp"
-#include "rix/msg/standard/Header.hpp"
-#include "rix/msg/standard/UInt64Array.hpp"
+#include "rix/std_msgs/Header.hpp"
+#include "rix/std_msgs/UInt64Array.hpp"
 #include "wifi/wifi_access_point.hpp"
 #include "wifi/wifi_station.hpp"
 
@@ -13,7 +13,7 @@
 std::shared_ptr<rix::Publisher> headerPub = nullptr;
 std::shared_ptr<rix::Publisher> vecPub = nullptr;
 std::shared_ptr<rix::Subscriber> headerSub = nullptr;
-rix::msg::standard::UInt64Array uint_msg;
+rix::std_msgs::UInt64Array uint_msg;
 
 const char *ca_cert_pem = R"(
   -----BEGIN CERTIFICATE-----
@@ -55,7 +55,7 @@ jjxDah2nGN59PRbxYvnKkKj9
 void timer_callback(const rix::TimerCallback::Event &event) {
   static int i = 0;
   if (headerPub->ok()) {
-    rix::msg::standard::Header header;
+    rix::std_msgs::Header header;
     header.frame_id = "Hello, world!";
     header.seq = i++;
     header.stamp = rix::Time::now().to_msg();
@@ -69,14 +69,14 @@ void timer_callback_uint64(const rix::TimerCallback::Event &event) {
   }
 }
 
-void headerSub_callback(const rix::msg::standard::Header &msg) {
+void headerSub_callback(const rix::std_msgs::Header &msg) {
   static int count = 0;
   count++;
   printf("Received Header message #%d: frame_id=\"%s\", seq=%lu, "
          "stamp=%.3ld.%.3ld\n",
          count, msg.frame_id.c_str(), msg.seq, msg.stamp.sec, msg.stamp.nsec);
 }
-void fillUint64Msg(rix::msg::standard::UInt64Array &uint_array, size_t size) {
+void fillUint64Msg(rix::std_msgs::UInt64Array &uint_array, size_t size) {
   uint_array.data.resize(size); // Resize to specified size
   for (size_t i = 0; i < uint_array.data.size(); ++i) {
     uint_array.data[i] = static_cast<uint64_t>(i % 256);
@@ -148,11 +148,11 @@ extern "C" void app_main() {
   publisher_config.STACK_SIZE = 16384;
   publisher_config.PRIORITY = 5;
   publisher_config.MAX_TIMEOUT = rix::Duration(10.0);
-  headerPub = node->create_publisher<rix::msg::standard::Header>(
+  headerPub = node->create_publisher<rix::std_msgs::Header>(
       "/chatter", publisher_config, rix::Endpoint(ip, 8000));
 
   // Publisher for large data (testing)
-  vecPub = node->create_publisher<rix::msg::standard::UInt64Array>(
+  vecPub = node->create_publisher<rix::std_msgs::UInt64Array>(
       "/large_data", publisher_config, rix::Endpoint(ip, 8001));
   if (!headerPub || !headerPub->ok() || !vecPub || !vecPub->ok()) {
     rix::Log::error << "Failed to create publisher." << std::endl;
@@ -188,7 +188,7 @@ extern "C" void app_main() {
   subscriber_config.STACK_SIZE = 4096;
   subscriber_config.PRIORITY = 5;
   subscriber_config.MAX_TIMEOUT = rix::Duration(2.0);
-  headerSub = node->create_subscriber<rix::msg::standard::Header>(
+  headerSub = node->create_subscriber<rix::std_msgs::Header>(
       "/chatter1", subscriber_config, headerSub_callback,
       rix::Endpoint(ip, 8002));
   if (!headerSub || !headerSub->ok()) {

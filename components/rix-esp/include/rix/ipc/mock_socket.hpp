@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "rix/ipc/generic_socket.hpp"
-#include "rix/msg/mediator/Operation.hpp"
+#include "rix/sys_msgs/Operation.hpp"
 #include <gmock/gmock.h>
 
 namespace rix::ipc {
@@ -18,7 +18,7 @@ public:
   mutable bool blocking = true;
   mutable bool reuse_address = false;
   mutable int backlog = 0;
-  mutable std::vector<std::shared_ptr<rix::msg::Message>> recv_buffer;
+  mutable std::vector<std::shared_ptr<rix::Message>> recv_buffer;
   mutable std::vector<std::shared_ptr<GenericSocket>> accepted_sockets;
 
   MockSocket() {
@@ -51,10 +51,10 @@ public:
     ON_CALL(*this, send).WillByDefault([this](const void *buf, size_t len, int flags) -> ssize_t { return -1; });
     ON_CALL(*this, recv).WillByDefault([this](void *buf, size_t len, int flags) -> ssize_t { return -1; });
 
-    ON_CALL(*this, send_message).WillByDefault([this](uint8_t opcode, const rix::msg::Message &msg) -> bool {
+    ON_CALL(*this, send_message).WillByDefault([this](uint8_t opcode, const rix::Message &msg) -> bool {
       return true;
     });
-    ON_CALL(*this, recv_message).WillByDefault([this](rix::msg::Message &msg, size_t len) -> bool { return true; });
+    ON_CALL(*this, recv_message).WillByDefault([this](rix::Message &msg, size_t len) -> bool { return true; });
 
     ON_CALL(*this, wait_readable).WillByDefault([this](const rix::util::Duration &timeout) -> bool {
       return !this->recv_buffer.empty();
@@ -90,8 +90,8 @@ public:
   MOCK_METHOD(ssize_t, send, (const void *buf, size_t len, int flags), (const, override));
   MOCK_METHOD(ssize_t, recv, (void *buf, size_t len, int flags), (const, override));
 
-  MOCK_METHOD(bool, send_message, (uint8_t opcode, const rix::msg::Message &msg), (const, override));
-  MOCK_METHOD(bool, recv_message, (rix::msg::Message & msg, size_t len), (const, override));
+  MOCK_METHOD(bool, send_message, (uint8_t opcode, const rix::Message &msg), (const, override));
+  MOCK_METHOD(bool, recv_message, (rix::Message & msg, size_t len), (const, override));
 
   MOCK_METHOD(bool, wait_readable, (const rix::util::Duration &timeout), (const, override));
   MOCK_METHOD(bool, wait_writable, (const rix::util::Duration &timeout), (const, override));

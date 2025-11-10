@@ -2,7 +2,7 @@
 
 namespace rix {
 
-ServiceClient::ServiceClient(const msg::mediator::SrvRequest& request, const TaskConfig& config,
+ServiceClient::ServiceClient(const sys_msgs::SrvRequest& request, const TaskConfig& config,
                              SocketFactory socket_factory,
                              const Endpoint& rixhub_endpoint)
     : Spinner(config), request_(request), socket_factory_(socket_factory) {
@@ -22,8 +22,8 @@ ServiceClient::ServiceClient(const msg::mediator::SrvRequest& request, const Tas
     return;
   }
 
-  msg::mediator::SrvResponse response;
-  msg::mediator::Operation op;
+  sys_msgs::SrvResponse response;
+  sys_msgs::Operation op;
   if (!client->recv_message(op, response)) {
     shutdown();
     return;
@@ -63,7 +63,7 @@ ServiceClient::~ServiceClient() {
 
 void ServiceClient::on_spin() {}
 
-bool ServiceClient::call(const msg::Message& request, msg::Message& response) {
+bool ServiceClient::call(const Message& request, Message& response) {
   if (!ok()) {
     return false;
   }
@@ -81,7 +81,7 @@ bool ServiceClient::call(const msg::Message& request, msg::Message& response) {
     return false;
   }
 
-  msg::mediator::Operation op;
+  sys_msgs::Operation op;
   if (!client->recv_message(op, response)) {
     return false;
   }

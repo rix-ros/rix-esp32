@@ -6,11 +6,11 @@
 
 #include "rix/core/common.hpp"
 #include "rix/core/spinner.hpp"
-#include "rix/msg/mediator/Operation.hpp"
-#include "rix/msg/mediator/SrvRequest.hpp"
-#include "rix/msg/mediator/SrvResponse.hpp"
-#include "rix/msg/mediator/Status.hpp"
-#include "rix/msg/standard/UInt32.hpp"
+#include "rix/sys_msgs/Operation.hpp"
+#include "rix/sys_msgs/SrvRequest.hpp"
+#include "rix/sys_msgs/SrvResponse.hpp"
+#include "rix/sys_msgs/Status.hpp"
+#include "rix/std_msgs/UInt32.hpp"
 #include "rix/util/log.hpp"
 
 namespace rix {
@@ -28,10 +28,10 @@ public:
 
   ~ServiceClient();
 
-  bool call(const msg::Message& request, msg::Message& response);
+  bool call(const Message& request, Message& response);
 
 private:
-  msg::mediator::SrvRequest request_;
+  sys_msgs::SrvRequest request_;
   SocketFactory socket_factory_;
   Endpoint endpoint_;
   TaskHandle_t task_handle_{nullptr};
@@ -43,7 +43,7 @@ private:
   using Spinner::spin_once;
   void on_spin() override;
 
-  ServiceClient(const msg::mediator::SrvRequest& request,const TaskConfig& config, SocketFactory factory, const Endpoint& rixhub_endpoint);
+  ServiceClient(const sys_msgs::SrvRequest& request,const TaskConfig& config, SocketFactory factory, const Endpoint& rixhub_endpoint);
 };
 
 } // namespace rix

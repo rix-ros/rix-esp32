@@ -2,7 +2,7 @@
 
 namespace rix {
 
-Service::Service(const msg::mediator::SrvInfo& info,
+Service::Service(const sys_msgs::SrvInfo& info,
                   const TaskConfig& config,
                  SocketFactory socket_factory,
                  const Endpoint& rixhub_endpoint)
@@ -37,8 +37,8 @@ Service::Service(const msg::mediator::SrvInfo& info,
     return;
   }
 
-  msg::mediator::Operation op;
-  msg::mediator::Status status;
+  sys_msgs::Operation op;
+  sys_msgs::Status status;
   if (!client->recv_message(op, status)) {
     shutdown();
     return;
@@ -99,7 +99,7 @@ void Service::on_spin() {
   }
 
   // Read the request message
-  msg::mediator::Operation op;
+  sys_msgs::Operation op;
   if (!conn->recv_message(op, *request_instance_))
     return;
 

@@ -2,7 +2,7 @@
 
 namespace rix {
 
-Subscriber::Subscriber(const msg::mediator::SubInfo &info,
+Subscriber::Subscriber(const sys_msgs::SubInfo &info,
                        const TaskConfig &config, SocketFactory socket_factory,
                        const Endpoint &rixhub_endpoint)
     : Spinner(config), info_(info), socket_factory_(socket_factory),
@@ -36,8 +36,8 @@ Subscriber::Subscriber(const msg::mediator::SubInfo &info,
     return;
   }
 
-  msg::mediator::Operation op;
-  msg::mediator::Status status;
+  sys_msgs::Operation op;
+  sys_msgs::Status status;
   if (!client->recv_message(op, status)) {
     shutdown();
     return;
@@ -124,7 +124,7 @@ void Subscriber::on_spin() {
         auto client = *it;
 
         // Read a message from the publisher
-        msg::mediator::Operation op;
+        sys_msgs::Operation op;
         if (!client->recv_message(op, *msg_instance_)) {
           clients_.erase(client);
           it++;
@@ -184,8 +184,8 @@ void Subscriber::SubNotifyAcceptor::on_spin() {
     return;
   }
 
-  msg::mediator::Operation op;
-  msg::mediator::SubNotify sub_notify;
+  sys_msgs::Operation op;
+  sys_msgs::SubNotify sub_notify;
   if (!conn->recv_message(op, sub_notify)) {
     return;
   }

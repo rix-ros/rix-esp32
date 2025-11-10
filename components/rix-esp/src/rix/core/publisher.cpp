@@ -2,7 +2,7 @@
 
 namespace rix {
 
-Publisher::Publisher(const msg::mediator::PubInfo &info, const TaskConfig& config, SocketFactory factory,
+Publisher::Publisher(const sys_msgs::PubInfo &info, const TaskConfig& config, SocketFactory factory,
                      Endpoint rixhub_endpoint)
     : Spinner(config), info_(info), socket_factory_(factory), rixhub_endpoint_(rixhub_endpoint),
       registered_flag_(false) {
@@ -39,8 +39,8 @@ Publisher::Publisher(const msg::mediator::PubInfo &info, const TaskConfig& confi
     return;
   }
 
-  msg::mediator::Operation op;
-  msg::mediator::Status status;
+  sys_msgs::Operation op;
+  sys_msgs::Status status;
   if (!client->recv_message(op, status)) {
     shutdown();
     return;
@@ -88,7 +88,7 @@ Publisher::~Publisher() {
 #endif
 }
 
-void Publisher::publish(const msg::Message &msg) {
+void Publisher::publish(const Message &msg) {
   if (!ok()) {
     return;
   }
@@ -141,7 +141,7 @@ void Publisher::publish(const msg::Message &msg) {
   }
   size_t offset = 0;
 
-  msg::mediator::Operation op;
+  sys_msgs::Operation op;
   op.len = msg_size;
   op.opcode = OPCODE::PUB_MESSAGE;
   op.serialize(messageBuffer, offset);
