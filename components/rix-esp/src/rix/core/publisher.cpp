@@ -134,25 +134,25 @@ void Publisher::publish(const Message &msg) {
   }
 
   // Send the message to each current connection
-  size_t msg_size = msg.size();
-  if (msg_size > sizeof(messageBuffer)) {
-    Log::error << "Message size exceeds buffer size." << std::endl;
-    return;
-  }
-  size_t offset = 0;
+  // size_t msg_size = msg.size();
+  // if (msg_size > sizeof(messageBuffer)) {
+  //   Log::error << "Message size exceeds buffer size." << std::endl;
+  //   return;
+  // }
+  // size_t offset = 0;
 
-  sys_msgs::Operation op;
-  op.len = msg_size;
-  op.opcode = OPCODE::PUB_MESSAGE;
-  op.serialize(messageBuffer, offset);
-  msg.serialize(messageBuffer, offset);
+  // sys_msgs::Operation op;
+  // op.len = msg_size;
+  // op.opcode = OPCODE::PUB_MESSAGE;
+  // op.serialize(messageBuffer, offset);
+  // msg.serialize(messageBuffer, offset);
 
   auto it = writable.begin();
   while (it != writable.end()) {
     auto conn = *it;
 
     // Send the message to the subscriber
-    if (!conn->send_message(messageBuffer, offset)) {
+    if (!conn->send_message(OPCODE::PUB_MESSAGE, msg)) {
       printf("Failed to send message to subscriber.\n");
       connections_.erase(conn);
       it++;
