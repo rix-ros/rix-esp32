@@ -89,14 +89,18 @@ Node::Node(const std::string& name, const TaskConfig& config, const Endpoint& en
 
 Node::~Node() {
 
-  if( task_handle_) {
-    vTaskDelete(task_handle_);
-  }
+  // if( task_handle_) {
+  //   vTaskDelete(task_handle_);
+  // }
+  shutdown();
+  vTaskDelay(pdMS_TO_TICKS(1500));
+
   if (registered_flag_) {
     auto client = socket_factory_();
     if (!client) {
       return;
     }
+    //client->set_blocking(false);  // ADD THIS LINE
     if (client->connect(rixhub_endpoint_)) {
       client->send_message(OPCODE::NODE_DEREGISTER, info_);
     }
@@ -104,6 +108,18 @@ Node::~Node() {
   while (!components_.empty()) {
     components_.pop_back(); // Preserve order of destruction
   }
+}
+
+void Node::shutdown() noexcept {
+  // Shutdown all components first
+  for (auto& component : components_) {
+    if (component) {
+      component->shutdown();
+    }
+  }
+  
+  // Then shutdown the node itself
+  Spinner::shutdown();
 }
 
 void Node::on_spin() {

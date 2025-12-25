@@ -11,19 +11,9 @@ namespace rix {
 Time Clock::now() const noexcept {
   // xTaskGetTickCount() * portTICK_PERIOD_MS gives milliseconds
   // Time(double) constructor expects seconds, so divide by 1000
-  Offset current_offset;
-  portENTER_CRITICAL(&offset_lock_);
-  current_offset = offset_;
-  portEXIT_CRITICAL(&offset_lock_);
-  
-  return raw_now() - Duration(current_offset.sec, current_offset.nsec);
-}
-
-Time Clock::raw_now() const noexcept {
-  // xTaskGetTickCount() * portTICK_PERIOD_MS gives milliseconds
-  // Time(double) constructor expects seconds, so divide by 1000
   return Time((double)xTaskGetTickCount() * portTICK_PERIOD_MS / 1000.0);
 }
+
 void Clock::sleep_for(const Duration &duration) {
   vTaskDelay(pdMS_TO_TICKS(duration.to_milliseconds()));
 }
@@ -34,23 +24,6 @@ void Clock::sleep_until(const Time &time) {
     Duration wait_duration = time - now;
     sleep_for(wait_duration);
   }
-}
-
-void Clock::set_offset(const Duration &offset) {
-  int64_t total_ns = offset.to_nanoseconds();
-  int64_t sec = total_ns / 1'000'000'000;
-  int32_t nsec = total_ns % 1'000'000'000;
-
-  // Normalize: ensure 0 <= nsec < 1e9
-  if (nsec < 0) {
-    sec -= 1;
-    nsec += 1'000'000'000;
-  }
-
-  portENTER_CRITICAL(&offset_lock_);
-  offset_.sec = sec;
-  offset_.nsec = nsec;
-  portEXIT_CRITICAL(&offset_lock_);
 }
 
 std::string Time::to_string(bool local_time) const {

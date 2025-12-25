@@ -22,7 +22,9 @@
 namespace rix {
 
 // Default RIXHub IP will first check RIX_RIXHUB_IP, then RIX_DEFAULT_IP, then fallback to loopback address.
-static inline const std::string RIXHUB_IP{"35.3.76.167"};
+//static inline const std::string RIXHUB_IP{"35.3.76.167"}; XPS13 On MWireless
+//static inline const std::string RIXHUB_IP{"35.3.37.126"}; MSI on Mwireless
+static inline const std::string RIXHUB_IP{"192.168.0.235"};
 
 // Default RIXHub port is 48104, can be overridden by RIX_RIXHUB_PORT environment variable
 static inline const uint16_t RIXHUB_PORT{48104};

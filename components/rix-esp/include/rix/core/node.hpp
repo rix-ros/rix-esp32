@@ -119,6 +119,7 @@ public:
   static inline void set_socket_factory(SocketFactory factory) { socket_factory_ = factory; }
   static inline void set_id_factory(IDFactory factory) { id_factory_ = factory; }
 
+  void shutdown() noexcept;
 private:
   Endpoint rixhub_endpoint_;
   sys_msgs::NodeInfo info_;

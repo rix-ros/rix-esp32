@@ -8,9 +8,6 @@
 #include "rix/std_msgs/Duration.hpp"
 #include "rix/std_msgs/Time.hpp"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/portmacro.h"
-
 namespace rix {
 
 namespace detail {
@@ -24,19 +21,13 @@ using time_t = std::chrono::time_point<clock_t, duration_t>;
 class Duration; // Forward declaration
 class Time;     // Forward declaration
 
-struct Offset{
-  int64_t sec;
-  int32_t nsec;
-};
 class GenericClock {
 public:
   GenericClock() = default;
   virtual ~GenericClock() = default;
   virtual Time now() const noexcept = 0;
-  virtual Time raw_now() const noexcept = 0;
   virtual void sleep_for(const Duration& duration) = 0;
   virtual void sleep_until(const Time& time) = 0;
-  virtual void set_offset(const Duration& offset) {}
 };
 
 class Clock : public GenericClock {
@@ -44,13 +35,8 @@ public:
   Clock() = default;
   ~Clock() = default;
   Time now() const noexcept override;
-  Time raw_now() const noexcept override;
   void sleep_for(const Duration& duration) override;
   void sleep_until(const Time& time) override;
-  void set_offset(const Duration& offset) override;
-private:
-  Offset offset_{};
-  mutable portMUX_TYPE offset_lock_ = portMUX_INITIALIZER_UNLOCKED;
 };
 
 class Time {
@@ -62,10 +48,6 @@ public:
   static void set_clock(std::shared_ptr<GenericClock> clock) { clock_ = clock; }
   static Time now();
 
-  static Time raw_now() { return clock_->raw_now(); } 
-
-
-  static void set_offset(const Duration& offset) { clock_->set_offset(offset); }
   /**
    * @brief Sleep for a given duration
    * @param duration The duration to sleep for.

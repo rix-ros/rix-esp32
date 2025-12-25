@@ -61,15 +61,18 @@ Subscriber::Subscriber(const sys_msgs::SubInfo &info,
 
 Subscriber::~Subscriber() {
 
-  if (task_handle_) {
-    vTaskDelete(task_handle_);
-  }
-
+  // if (task_handle_) {
+  //   vTaskDelete(task_handle_);
+  // }
+  shutdown();
+  sub_notify_acceptor_.shutdown();
+  vTaskDelay(pdMS_TO_TICKS(1500)); 
   if (registered_flag_) {
     auto client = socket_factory_();
     if (!client) {
       return;
     }
+   // client->set_blocking(false);
     if (client->connect(rixhub_endpoint_)) {
       client->send_message(OPCODE::SUB_DEREGISTER, info_);
     }
@@ -177,6 +180,7 @@ void Subscriber::SubNotifyAcceptor::on_spin() {
   if (!parent.server_->wait_readable(timeout)) {
     return;
   }
+    rix::Log::info << "Accepting connection from rixhub..." << std::endl;
 
   // Accept a connection from rixhub
   auto conn = parent.server_->accept();
@@ -187,10 +191,12 @@ void Subscriber::SubNotifyAcceptor::on_spin() {
   sys_msgs::Operation op;
   sys_msgs::SubNotify sub_notify;
   if (!conn->recv_message(op, sub_notify)) {
+    rix::Log::error << "Failed to receive SubNotify from rixhub."
+                  << std::endl;
     return;
   }
   if (op.opcode != OPCODE::SUB_NOTIFY) {
-    Log::warn << "Received invalid opcode from rixhub." << std::endl;
+    rix::Log::error << "Received invalid opcode from rixhub." << std::endl;
     return;
   }
   rix::util::LockGuard guard(parent.callback_mutex_);
@@ -204,7 +210,7 @@ void Subscriber::SubNotifyAcceptor::on_spin() {
       client->set_blocking(false);
       client->connect(Endpoint(pub.endpoint.address, pub.endpoint.port));
       parent.clients_.insert(client);
-      Log::debug << "Connected to publisher at \"" << pub.endpoint.address
+      rix::Log::debug << "Connected to publisher at \"" << pub.endpoint.address
                  << ":" << pub.endpoint.port << "\" on topic \""
                  << pub.topic_info.name << "\"." << std::endl;
     }

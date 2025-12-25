@@ -16,8 +16,8 @@ TimerCallback::TimerCallback(const TaskConfig& config, Callback callback) : Spin
 }
 
 TimerCallback::~TimerCallback() {
-  if (task_handle_)
-    vTaskDelete(task_handle_);
+  // if (task_handle_)
+  //   vTaskDelete(task_handle_);
 #ifdef RIX_MULTITHREADED
   shutdown();
   if (spin_thread_.joinable()) {
@@ -31,7 +31,7 @@ void TimerCallback::on_spin() {
   uint32_t delayMs = duration_.to_milliseconds();
   uint32_t delayTicks = delayMs / portTICK_PERIOD_MS;
 
-  if (!callback_mutex_ || shutdown_flag_) {
+  if (!callback_mutex_){ //|| shutdown_flag_) {
     return;
   }
   

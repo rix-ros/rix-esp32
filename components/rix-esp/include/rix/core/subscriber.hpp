@@ -46,7 +46,7 @@ private:
   std::set<std::shared_ptr<GenericSocket>> clients_;
   Endpoint rixhub_endpoint_;
   std::atomic<bool> registered_flag_;
-  std::atomic<bool> shutdown_flag_;
+ // std::atomic<bool> shutdown_flag_;
   std::shared_ptr<Message> msg_instance_;
   TaskHandle_t task_handle_{nullptr};
 

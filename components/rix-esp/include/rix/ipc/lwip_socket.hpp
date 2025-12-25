@@ -4,6 +4,8 @@
 #include "rix/util/time.hpp"
 
 #include "lwip/sockets.h"
+#include "lwip/pbuf.h"
+#include "lwip/tcp.h"
 #include <memory>
 
 namespace rix::ipc {

@@ -53,7 +53,7 @@ private:
   Duration duration_;
   Event event_;
   Callback callback_;
-  std::atomic<bool> shutdown_flag_{false};
+  //std::atomic<bool> shutdown_flag_{false};
   TaskHandle_t task_handle_{nullptr};
   SemaphoreHandle_t callback_mutex_ = xSemaphoreCreateMutex();
 };

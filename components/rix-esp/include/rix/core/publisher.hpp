@@ -39,7 +39,7 @@ private:
   SemaphoreHandle_t connections_mutex_ = xSemaphoreCreateMutex();
   Endpoint rixhub_endpoint_;
   std::atomic<bool> registered_flag_;
-  std::atomic<bool> shutdown_flag_;
+  //std::atomic<bool> shutdown_flag_;
   TaskHandle_t task_handle_{nullptr};
   char task_name_[32];
   // Message buffer for publishing

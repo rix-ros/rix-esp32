@@ -1,4 +1,5 @@
 #include "rix/core/publisher.hpp"
+#include "esp_log.h"
 
 namespace rix {
 
@@ -51,7 +52,7 @@ Publisher::Publisher(const sys_msgs::PubInfo &info, const TaskConfig& config, So
   }
 
   registered_flag_ = true;
-  shutdown_flag_ = false;
+  //shutdown_flag_ = false;
 
   Log::debug << "Publisher created on topic \"" << info_.topic_info.name
              << "\"." << std::endl;
@@ -65,15 +66,22 @@ Publisher::Publisher(const sys_msgs::PubInfo &info, const TaskConfig& config, So
 
 Publisher::~Publisher() {
   // Deregister publisher with rixhubS
-  if (task_handle_) {
-    vTaskDelete(task_handle_);
-  }
+  // if (task_handle_) {
+  //   vTaskDelete(task_handle_);
+  // }
+  ESP_LOGI("RIX", "Publisher Destructor called");
+
+  shutdown();
+  vTaskDelay(pdMS_TO_TICKS(1500)); 
   if (registered_flag_) {
     auto client = socket_factory_();
     if (!client) {
       return;
     }
+    ESP_LOGI("RIX","Connecting to rixhub for deregister...");
+    //client->set_blocking(false);
     if (client->connect(rixhub_endpoint_)) {
+      ESP_LOGI("RIX","Sending deregister msg");
       client->send_message(OPCODE::PUB_DEREGISTER, info_);
     }
   }
@@ -160,7 +168,7 @@ void Publisher::publish(const Message &msg) {
     }
     else
     {
-      printf("Sent message to subscriber.\n");
+      //printf("Sent message to subscriber.\n");
     }
     it++;
   }

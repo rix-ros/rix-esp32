@@ -121,6 +121,7 @@ ssize_t LWIPSocket::readv(MessageSegment* segments, size_t segment_count) const 
 
 ssize_t LWIPSocket::send(const void *buf, size_t len, int flags) const {
   int result = ::send(s_, buf, len, flags);
+  printf("LWIPSocket::send returned %d\n", result);
   if (is_blocking_) 
   {
     return result;
@@ -137,8 +138,8 @@ ssize_t LWIPSocket::send(const void *buf, size_t len, int flags) const {
 
 ssize_t LWIPSocket::recv(void *buf, size_t len, int flags) const {
   int result = ::recv(s_, buf, len, flags);
-  if (is_blocking_) 
-  {
+  printf("LWIPSocket::recv returned %d\n", result);
+  if (is_blocking_) {
     return result;
   }
   else
