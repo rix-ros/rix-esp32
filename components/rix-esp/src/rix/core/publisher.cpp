@@ -52,25 +52,17 @@ Publisher::Publisher(const sys_msgs::PubInfo &info, const TaskConfig& config, So
   }
 
   registered_flag_ = true;
-  //shutdown_flag_ = false;
 
   Log::debug << "Publisher created on topic \"" << info_.topic_info.name
              << "\"." << std::endl;
 
-  snprintf(task_name_, sizeof(task_name_), "%" PRIu64, info_.id);
-  // xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this, config.PRIORITY,
-  //             &task_handle_);
-    xTaskCreate(&Spinner::spin_task, "Publisher", config.STACK_SIZE, this, config.PRIORITY,
+    xTaskCreate(&Spinner::spin_task, config.task_name, config.STACK_SIZE, this, config.PRIORITY,
               &task_handle_);
 }
 
 Publisher::~Publisher() {
-  // Deregister publisher with rixhubS
-  // if (task_handle_) {
-  //   vTaskDelete(task_handle_);
-  // }
-  ESP_LOGI("RIX", "Publisher Destructor called");
-
+  Log::debug << "Destroying publisher on topic \"" << info_.topic_info.name
+             << "\"..." << std::endl;
   shutdown();
   vTaskDelay(pdMS_TO_TICKS(1500)); 
   if (registered_flag_) {
@@ -78,22 +70,12 @@ Publisher::~Publisher() {
     if (!client) {
       return;
     }
-    ESP_LOGI("RIX","Connecting to rixhub for deregister...");
-    //client->set_blocking(false);
     if (client->connect(rixhub_endpoint_)) {
-      ESP_LOGI("RIX","Sending deregister msg");
       client->send_message(OPCODE::PUB_DEREGISTER, info_);
     }
   }
   Log::debug << "Publisher on topic \"" << info_.topic_info.name
              << "\" destroyed." << std::endl;
-
-#ifdef RIX_MULTITHREADED
-  shutdown();
-  if (spin_thread_.joinable()) {
-    spin_thread_.join();
-  }
-#endif
 }
 
 void Publisher::publish(const Message &msg) {
@@ -141,34 +123,17 @@ void Publisher::publish(const Message &msg) {
     }
   }
 
-  // Send the message to each current connection
-  // size_t msg_size = msg.size();
-  // if (msg_size > sizeof(messageBuffer)) {
-  //   Log::error << "Message size exceeds buffer size." << std::endl;
-  //   return;
-  // }
-  // size_t offset = 0;
-
-  // sys_msgs::Operation op;
-  // op.len = msg_size;
-  // op.opcode = OPCODE::PUB_MESSAGE;
-  // op.serialize(messageBuffer, offset);
-  // msg.serialize(messageBuffer, offset);
-
   auto it = writable.begin();
   while (it != writable.end()) {
     auto conn = *it;
 
     // Send the message to the subscriber
     if (!conn->send_message(OPCODE::PUB_MESSAGE, msg)) {
-      printf("Failed to send message to subscriber.\n");
+      Log::warn << "Failed to send message to subscriber on topic \""
+                << info_.topic_info.name << "\"." << std::endl;
       connections_.erase(conn);
       it++;
       continue;
-    }
-    else
-    {
-      //printf("Sent message to subscriber.\n");
     }
     it++;
   }

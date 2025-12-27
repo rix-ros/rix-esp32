@@ -30,7 +30,7 @@ static inline const std::string RIXHUB_IP{"192.168.0.235"};
 static inline const uint16_t RIXHUB_PORT{48104};
 // Default IP is loopback address, can be overridden by RIX_DEFAULT_IP environment variable
 static inline const std::string DEFAULT_IP{"35.3.190.250"};
-
+#define MAX_TASK_NAME_LENGTH 16
 enum OPCODE : uint8_t {
   STATUS_RESPONSE = 0,
   PING,
@@ -84,6 +84,7 @@ static inline uint64_t default_id_generator() {
 struct TaskConfig{
   size_t STACK_SIZE;
   uint8_t PRIORITY;
+  char task_name[MAX_TASK_NAME_LENGTH];
   Duration MAX_TIMEOUT;
 };
 

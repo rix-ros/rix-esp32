@@ -7,23 +7,12 @@ TimerCallback::TimerCallback(const TaskConfig& config, Callback callback) : Spin
   event_.current_expected = event_.last_expected = event_.last_real = Time(0.0);
   event_.last_duration = Duration(0.0);
 
-  Time currentTime = Time::now();
-  snprintf(task_name_, sizeof(task_name_), "%" PRIu64, currentTime.to_nanoseconds());
-  xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this, config.PRIORITY, &task_handle_);
-// #ifdef RIX_MULTITHREADED
-//   spin_thread_ = std::thread([this]() { this->spin(); });
-// #endif
+  xTaskCreate(&Spinner::spin_task, config.task_name, config.STACK_SIZE, this, config.PRIORITY, &task_handle_);
 }
 
 TimerCallback::~TimerCallback() {
-  // if (task_handle_)
-  //   vTaskDelete(task_handle_);
-#ifdef RIX_MULTITHREADED
   shutdown();
-  if (spin_thread_.joinable()) {
-    spin_thread_.join();
-  }
-#endif
+  vTaskDelay(pdMS_TO_TICKS(1500)); // Allow time for task to shutdown
 }
 
 void TimerCallback::on_spin() {

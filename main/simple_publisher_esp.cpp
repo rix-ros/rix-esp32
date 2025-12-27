@@ -1,20 +1,11 @@
 #include "nvs_flash.h"
-#include "rix/core/mediator.hpp"
 #include "rix/core/node.hpp"
 #include "rix/std_msgs/Header.hpp"
-#include "rix/std_msgs/UInt64Array.hpp"
 #include "wifi/wifi_access_point.hpp"
 #include "wifi/wifi_station.hpp"
-
-#include "lwip/stats.h"
-#include "lwip/tcp.h"
 #include <memory>
 
 std::shared_ptr<rix::Publisher> headerPub = nullptr;
-std::shared_ptr<rix::Publisher> vecPub = nullptr;
-std::shared_ptr<rix::Subscriber> headerSub = nullptr;
-rix::std_msgs::UInt64Array uint_msg;
-
 const char *ca_cert_pem = R"(
   -----BEGIN CERTIFICATE-----
 MIIF3jCCA8agAwIBAgIQAf1tMPyjylGoG7xkDjUDLTANBgkqhkiG9w0BAQwFADCB
@@ -52,43 +43,7 @@ jjxDah2nGN59PRbxYvnKkKj9
 -----END CERTIFICATE-----
   )";
 
-void timer_callback(const rix::TimerCallback::Event &event) {
-  static int i = 0;
-  if (headerPub->ok()) {
-    rix::std_msgs::Header header;
-    header.frame_id = "Hello, world!";
-    header.seq = i++;
-    header.stamp = rix::Time::now().to_msg();
-    headerPub->publish(header);
-  }
-}
 
-void timer_callback_uint64(const rix::TimerCallback::Event &event) {
-  if (vecPub->ok()) {
-    vecPub->publish(uint_msg);
-  }
-}
-
-void headerSub_callback(const rix::std_msgs::Header &msg) {
-  static int count = 0;
-  count++;
-  printf("Received Header message #%d: frame_id=\"%s\", seq=%lu, "
-         "stamp=%.3ld.%.3ld\n",
-         count, msg.frame_id.c_str(), msg.seq, msg.stamp.sec, msg.stamp.nsec);
-}
-void fillUint64Msg(rix::std_msgs::UInt64Array &uint_array, size_t size) {
-  uint_array.data.resize(size); // Resize to specified size
-  for (size_t i = 0; i < uint_array.data.size(); ++i) {
-    uint_array.data[i] = static_cast<uint64_t>(i % 256);
-  }
-}
-
-void printMemoryInfo() {
-  size_t free_heap = esp_get_free_heap_size();
-  size_t min_free_heap = esp_get_minimum_free_heap_size();
-  printf("Free heap size: %zu bytes\n", free_heap);
-  printf("Minimum free heap size: %zu bytes\n", min_free_heap);
-}
 extern "C" void app_main() {
   // Init Wi-Fi (host access point)
   esp_err_t ret = nvs_flash_init();
@@ -112,9 +67,9 @@ extern "C" void app_main() {
                    << std::endl;
   }
   rix::Log::info << "Connecting to Wi-Fi..." << std::endl;
-  sta.connect_enterprise("eduroam", "umid@umich.edu", "password",
-                         ca_cert_pem);
-  //  sta.connect("Robolink", "i<3robots!");
+  //sta.connect_enterprise("eduroam", "umid@umich.edu", "password",
+  //                       ca_cert_pem);
+  sta.connect("Sputnik", "calibird");
   sta.wait_for_connection(50000);
   if (!sta.is_connected()) {
     rix::Log::error << "Failed to connect to Wi-Fi." << std::endl;
@@ -144,61 +99,39 @@ extern "C" void app_main() {
     rix::Log::error << "Failed to create node." << std::endl;
     return;
   }
-  rix::TaskConfig publisher_config;
-  publisher_config.STACK_SIZE = 16384;
-  publisher_config.PRIORITY = 5;
-  publisher_config.MAX_TIMEOUT = rix::Duration(10.0);
-  headerPub = node->create_publisher<rix::std_msgs::Header>(
-      "/chatter", publisher_config, rix::Endpoint(ip, 8000));
 
-  // Publisher for large data (testing)
-  vecPub = node->create_publisher<rix::std_msgs::UInt64Array>(
-      "/large_data", publisher_config, rix::Endpoint(ip, 8001));
-  if (!headerPub || !headerPub->ok() || !vecPub || !vecPub->ok()) {
+  rix::TaskConfig pub_config;
+  pub_config.STACK_SIZE = 4096;
+  pub_config.PRIORITY = 5;
+  pub_config.MAX_TIMEOUT = rix::Duration(2.0);
+  headerPub = node->create_publisher<rix::std_msgs::Header>(
+      "/chatter", pub_config,
+      rix::Endpoint(rix::RIXHUB_IP, 8000));
+  if (!headerPub || !headerPub->ok()) {
     rix::Log::error << "Failed to create publisher." << std::endl;
     return;
   }
-  printf("Publisher created successfully on %s:8000\n", ip.c_str());
 
   rix::TaskConfig timer_config;
-  timer_config.STACK_SIZE = 8192;
+  timer_config.STACK_SIZE = 4096;
   timer_config.PRIORITY = 5;
-  timer_config.MAX_TIMEOUT = rix::Duration(2.0);
-  auto timer = node->create_timer(timer_config, timer_callback);
+  timer_config.MAX_TIMEOUT = rix::Duration(1.0);
+  auto timer = node->create_timer(
+      timer_config, [](const rix::TimerCallback::Event &event) {
+        static uint32_t seq = 0;
+        rix::std_msgs::Header header_msg;
+        header_msg.seq = seq++;
+        header_msg.stamp = rix::Time::now().to_msg();
+        header_msg.frame_id = "esp32_frame";
+        if (headerPub && headerPub->ok()) {
+          headerPub->publish(header_msg);
+          rix::Log::info << "Published header message with seq: " << header_msg.seq
+                         << std::endl;
+        }
+      });
   if (!timer || !timer->ok()) {
     rix::Log::error << "Failed to create timer." << std::endl;
     return;
-  }
-  printf("Timer created successfully with 1.0s interval\n");
-
-  fillUint64Msg(uint_msg, 8000); // Approx 62 KB message
-  rix::TaskConfig uint_timer_config;
-  uint_timer_config.STACK_SIZE = 16384;
-  uint_timer_config.PRIORITY = 5;
-  uint_timer_config.MAX_TIMEOUT = rix::Duration(0.1); // 10 Hz publish rate
-  auto timer_uint =
-      node->create_timer(uint_timer_config, timer_callback_uint64);
-  if (!timer_uint || !timer_uint->ok()) {
-    rix::Log::error << "Failed to create timer." << std::endl;
-    return;
-  }
-  printf("Timer created successfully with 0.1s interval\n");
-
-  rix::TaskConfig subscriber_config;
-  subscriber_config.STACK_SIZE = 4096;
-  subscriber_config.PRIORITY = 5;
-  subscriber_config.MAX_TIMEOUT = rix::Duration(2.0);
-  headerSub = node->create_subscriber<rix::std_msgs::Header>(
-      "/chatter1", subscriber_config, headerSub_callback,
-      rix::Endpoint(ip, 8002));
-  if (!headerSub || !headerSub->ok()) {
-    rix::Log::error << "Failed to create subscriber." << std::endl;
-    return;
-  }
-  printf("Subscriber created successfully on %s:8002\n", ip.c_str());
-  while (node->ok()) {
-    node->spin_once();                    // Check node health
-    vTaskDelay(100 / portTICK_PERIOD_MS); // Check health every 100ms
   }
   // We should never get here
   for (;;) {

@@ -51,19 +51,14 @@ Subscriber::Subscriber(const sys_msgs::SubInfo &info,
 
   Log::debug << "Subscriber created on topic \"" << info_.topic_info.name
              << "\"." << std::endl;
-  snprintf(task_name_, sizeof(task_name_), "%" PRIu64, info_.id);
-  xTaskCreate(&Spinner::spin_task, task_name_, config.STACK_SIZE, this,
+  xTaskCreate(&Spinner::spin_task, config.task_name, config.STACK_SIZE, this,
               config.PRIORITY, &task_handle_);
-  // xTaskCreate(&Spinner::spin_task, "Subscriber", config.STACK_SIZE, this,
-  //             config.PRIORITY, &task_handle_);
   sub_notify_acceptor_.start();
 }
 
 Subscriber::~Subscriber() {
-
-  // if (task_handle_) {
-  //   vTaskDelete(task_handle_);
-  // }
+  Log::debug << "Destroying subscriber on topic \"" << info_.topic_info.name
+             << "\"..." << std::endl;
   shutdown();
   sub_notify_acceptor_.shutdown();
   vTaskDelay(pdMS_TO_TICKS(1500)); 
@@ -86,7 +81,6 @@ size_t Subscriber::get_publisher_count() const {
   return clients_.size();
 }
 
-/**< TODO: Implement the spin_once method */
 void Subscriber::on_spin() {
 
   {
@@ -161,18 +155,15 @@ void Subscriber::on_spin() {
 Subscriber::SubNotifyAcceptor::SubNotifyAcceptor(Subscriber &parent,
                                                  const TaskConfig &config)
     : Spinner(config), parent(parent), config_(config) {
-  // TODO: Add configurable priority and maybe stack size
-  // Priority is used directly in start() method via config_.PRIORITY
-  // Make the task name unique by adding 0xA to the subscriber ID
-  printf("Spinning up SubNotifyAcceptor...\n");
-  snprintf(task_name_, sizeof(task_name_), "%" PRIu64, parent.info_.id + 0xA);
+  // SubNotifyAcceptor tasks use the same name as the parent subscriber, but with suffix "_SNA"
+  // Truncate to 11 chars to leave room for "_SNA" (total < 16 chars)
+  snprintf(task_name_, sizeof(task_name_), "%.11s_SNA", config_.task_name);
 }
 
 void Subscriber::SubNotifyAcceptor::start() {
+
   xTaskCreate(&Spinner::spin_task, task_name_, config_.STACK_SIZE, this,
               config_.PRIORITY, &task_handle_);
-  // xTaskCreate(&Spinner::spin_task, "SubNotifyAcceptor", config_.STACK_SIZE,
-  //             this, config_.PRIORITY, &task_handle_);
 }
 void Subscriber::SubNotifyAcceptor::on_spin() {
   Duration timeout(1.0);

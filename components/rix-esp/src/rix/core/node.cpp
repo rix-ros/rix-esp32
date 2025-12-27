@@ -66,8 +66,6 @@ Node::Node(const std::string& name, const TaskConfig& config, const Endpoint& en
   ping_timer_config.PRIORITY = 5;
   ping_timer_config.MAX_TIMEOUT = Duration(2);
   create_timer(ping_timer_config, [this](const TimerCallback::Event&) {
-    // Check for ping
-    // std::cout << "Checking for ping..." << std::endl;
     if (server_->is_readable()) {
       auto conn = server_->accept();
       if (conn) {
@@ -88,10 +86,6 @@ Node::Node(const std::string& name, const TaskConfig& config, const Endpoint& en
 }
 
 Node::~Node() {
-
-  // if( task_handle_) {
-  //   vTaskDelete(task_handle_);
-  // }
   shutdown();
   vTaskDelay(pdMS_TO_TICKS(1500));
 
@@ -100,7 +94,6 @@ Node::~Node() {
     if (!client) {
       return;
     }
-    //client->set_blocking(false);  // ADD THIS LINE
     if (client->connect(rixhub_endpoint_)) {
       client->send_message(OPCODE::NODE_DEREGISTER, info_);
     }
@@ -134,10 +127,6 @@ void Node::on_spin() {
     it++;
   }
   vTaskDelay(pdMS_TO_TICKS(10));
-#ifdef RIX_MULTITHREADED
-  // Sleep to prevent busy waiting
-  std::this_thread::sleep_for(std::chrono::milliseconds(10));
-#endif
 }
 
 std::shared_ptr<Publisher> Node::create_publisher(const sys_msgs::TopicInfo& topic_info, const TaskConfig& config,

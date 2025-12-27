@@ -7,7 +7,6 @@ idf_component_register(
         "src/rix/core/service_client.cpp"
         "src/rix/core/subscriber.cpp"
         "src/rix/core/timer_callback.cpp"
-        "src/rix/core/timer.cpp"
         "src/rix/ipc/endpoint.cpp"
         "src/rix/ipc/lwip_socket.cpp"
         "src/rix/ipc/poll.cpp"
